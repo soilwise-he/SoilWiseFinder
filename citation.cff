@@ -1,5 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
+title: "SoilWiseFinder - SoilWise Catalogue search user interface"
 authors:
 - family-names: "YOUR_NAME_HERE"
   given-names: "YOUR_NAME_HERE"
@@ -11,4 +12,32 @@ title: "SoilWiseFinder"
 version: 1.0.0
 doi: 10.5281/zenodo.1234
 date-released: 2026-04-02
-url: "https://github.com/soilwise-he/SoilWiseFinder"
+repository-code: "https://github.com/soilwise-he/SoilWiseFinder"
+url: <LINK TO UI>
+abstract: >-
+  SoilWiseFinder provides de front-end and back-end components of the SoilWise catalogue discovery user interface. 
+  It consists of (1) a React/Javascript User interface, (2) an API that provides the NLP supported indexing of metadata into the Apache Lucene index and the querying of the index via de Solr search engine libraries and (3) the required configuration of the Solr search engine.
+keywords:
+  - "SoilWise"
+  - "FAIR principles"
+  - "Soil health"
+  - "Solr"
+  - "Soil data"
+  - "Soil knowledge"
+license: "CC-BY-4.0"
+identifiers:
+  - type: doi
+    value: ""
+    description: "DOI for the guidelines (to be assigned)"
+  - type: other
+    value: "101112838"
+    description: "EU Horizon grant agreement number"
+references:
+  - type: grant
+    title: "SoilWise — Enabling Soil Data and Knowledge for Informed Decision-Making"
+    authors:
+  - name: "European Commission"
+    number: "101112838"
+    institution:
+    name: "European Union"
+    url: "https://doi.org/10.3030/101112838"
