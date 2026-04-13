@@ -1,0 +1,25 @@
+FROM harbor.containers.wurnet.nl/proxy-cache/library/solr:9.7.0
+
+USER root
+
+RUN [ ! -d /app/data ] && mkdir -p /app/data || true && \
+    [ ! -d /app/logs ] && mkdir -p /app/logs || true && \
+    chown -R solr:solr /app
+
+# bin/solr create -c records
+# /app/data/records/security.json
+# /app/data/records/conf/configoverlay.json
+# /app/data/records/conf/schema.xml
+# /app/data/records/conf/solrconfig.xml :  <schemaFactory class="ClassicIndexSchemaFactory"/>
+
+ENV SOLR_HOME=/app/data \
+    SOLR_PID_DIR=/app \
+    SOLR_LOGS_DIR=/app/logs \
+    SOLR_HEAP="4g" \
+    SOLR_OPTS="$SOLR_OPTS -Dsolr.autoSoftCommit.maxTime=10000"
+
+COPY jts-core-1.20.0.jar /opt/solr-9.7.0/server/lib/ext/jts-core-1.20.0.jar
+
+USER solr
+
+CMD ["solr-foreground"]
