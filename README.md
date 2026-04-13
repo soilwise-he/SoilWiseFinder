@@ -28,11 +28,11 @@ Three components need to be installed (local installation):
 - Solr:
   - In a command prompt go to the solr directory of the repository
   - Run: docker build -f Dockerfile-dev .
-- Search-API:
+- Search API:
   - In a command prompt go the the search-api directory of the repository
   - Provide a file application.properties in the directory src/main/resources (a template is given in that directory)
   - Run: mvn clean package -Dskiptests
-- Search-UI:
+- Search UI:
   - In a command prompt go the to search-ui directory of the repository
   - Provide a file .env in the root directory (a template is given in that directory)
   - Run: npm install
