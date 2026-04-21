@@ -2,21 +2,28 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 title: "SoilWiseFinder - SoilWise Catalogue search user interface"
 authors:
-- family-names: "YOUR_NAME_HERE"
-  given-names: "YOUR_NAME_HERE"
-  orcid: "https://orcid.org/0000-0000-0000-0000"
-- family-names: "Lisa"
-  given-names: "Mona"
-  orcid: "https://orcid.org/0000-0000-0000-0000"
+- family-names: "Marlies"
+  given-names: "de Keizer"
+  email: "marlies.dekeizer@wur.nl"
+  affiliation: "Wageningen University & Research"
+- family-names: "Lokers"
+  given-names: "Rob"
+  email: "rob.lokers@wur.nl"
+  affiliation: "Wageningen University & Research"
+- family-names: "Snopková"
+  given-names: "Dajana"
+  email: "dajana.snopkova@muni.cz"
+  affiliation: "Masaryk University"
+  orcid: "https://orcid.org/0000-0002-0568-6211"
 title: "SoilWiseFinder"
 version: 1.0.0
-doi: 10.5281/zenodo.1234
-date-released: 2026-04-02
+doi: 
+date-released: 2026-04-22
 repository-code: "https://github.com/soilwise-he/SoilWiseFinder"
-url: <LINK TO UI>
+url: "https://soilwise-he.eu"
 abstract: >-
-  SoilWiseFinder provides de front-end and back-end components of the SoilWise catalogue discovery user interface. 
-  It consists of (1) a React/Javascript User interface, (2) an API that provides the NLP supported indexing of metadata into the Apache Lucene index and the querying of the index via de Solr search engine libraries and (3) the required configuration of the Solr search engine.
+  SoilWiseFinder provides the front-end and back-end components of the SoilWise catalogue discovery user interface. 
+  It consists of (1) a React/Javascript User interface, (2) an API that provides the NLP supported indexing of metadata into the Apache Lucene index and the querying of the index via the Solr search engine libraries and (3) the required configuration of the Solr search engine.
 keywords:
   - "SoilWise"
   - "FAIR principles"
@@ -28,7 +35,16 @@ license: "CC-BY-4.0"
 identifiers:
   - type: doi
     value: ""
-    description: "DOI for the guidelines (to be assigned)"
+    description: "DOI for the software (to be assigned)"
   - type: other
     value: "101112838"
     description: "EU Horizon grant agreement number"
+references:
+  - type: grant
+    title: "SoilWise — Enabling Soil Data and Knowledge for Informed Decision-Making"
+    authors:
+      - name: "European Commission"
+    number: "101112838"
+    institution:
+      name: "European Union"
+    url: "https://doi.org/10.3030/101112838"
