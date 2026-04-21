@@ -4,15 +4,6 @@ import { createTheme } from '@mui/material/styles';
 
 const muiTheme = createTheme({
     cssVariables: true,
-    breakpoints: {
-        values: {
-            xs: 0,
-            sm: 600,
-            md: 768,
-            lg: 1025,
-            xl: 1536
-        }
-    },
     palette: {
         primary: {
             main: '#557237'
@@ -95,15 +86,14 @@ const muiTheme = createTheme({
         MuiContainer: {
             styleOverrides: {
                 root: {
-                    maxWidth: '1200px !important',
                     variants: [
                         {
                             props: { variant: 'content' },
                             style: {
-                                maxWidth: 'calc(100vw - 30px) !important',
+                                maxWidth: '1500px !important',
                                 minHeight: 'calc(100vh - 220px)',
                                 margin: '50px auto',
-                                padding: '0px 20px !important',
+                                padding: '0px !important',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: '20px'
@@ -193,15 +183,6 @@ const muiTheme = createTheme({
                 tooltip: {
                     borderRadius: 'var(--mui-shape-borderRadius-0)',
                     fontSize: '12px'
-                }
-            }
-        },
-        MuiPopper: {
-            styleOverrides: {
-                root: {
-                    '& .MuiPaper-root': {
-                        width: 'fit-content'
-                    }
                 }
             }
         }

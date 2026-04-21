@@ -1,19 +1,19 @@
 'use client';
 
 import styled from '@emotion/styled';
+import { Chip } from '@mui/material';
 import Clear from '@mui/icons-material/Clear';
 import { IconButton } from '@mui/material';
 
 import { store } from 'src/context/store';
 import useGetData from 'src/services/getData';
-import Tabs from 'components/UIContainers/Tabs';
-import ThematicFilters from 'components/Catalogue/Search/Filters/ThematicFilters';
-import TemporalFilters from 'components/Catalogue/Search/Filters/TemporalFilters';
+import Tabs from 'components/Surfaces/Tabs';
+import TermFilter from 'components/Catalogue/Search/Filters/TermFilter';
+import RangeFilter from 'components/Catalogue/Search/Filters/RangeFilter';
 import SpatialFilter from 'components/Catalogue/Search/Filters/SpatialFilter';
-import { thematicFilterKeys } from 'src/services/settings';
+import { dateRanges, termLabels } from 'src/services/settings';
 import { useEffect, useState } from 'react';
-import SelectedOptions from './SelectedOptions';
-import SelectList from 'components/UIElements/SelectList';
+import SelectChip from 'components/UIElements/SelectChip';
 
 const MainContainer = styled.div`
     display: flex;
@@ -25,6 +25,30 @@ const MainContainer = styled.div`
         width: 100%;
     }
 `;
+const OptionsContainer = styled.div`
+    display: flex;
+    align-items: stretch;
+    gap: var(--mui-spacing-0);
+`;
+const StyledChip = styled(Chip)`
+    height: fit-content !important;
+    background-color: white !important;
+
+    p {
+        margin: 0px;
+
+        &:first-of-type {
+            margin-top: 0.2rem;
+        }
+
+        &:last-of-type {
+            font-style: italic;
+            font-weight: normal;
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+        }
+    }
+`;
 const ClearButton = styled(IconButton)`
     padding-top: 0px;
     padding-bottom: 0px;
@@ -32,9 +56,16 @@ const ClearButton = styled(IconButton)`
 `;
 
 const Filters = () => {
-    const { filters, updateTermFilter, removeFilter } = store();
-    const { getResourceTypes } = useGetData();
-    const [resourceTypes, setResourceTypes] = useState(null);
+    const {
+        filters,
+        updateTypeFilter,
+        removeTermFromFilter,
+        removeRangeFilter,
+        removeFilter,
+        facets
+    } = store();
+    const { getTypes } = useGetData();
+    const [types, setTypes] = useState(null);
 
     const getClearButton = key => {
         return (
@@ -56,21 +87,16 @@ const Filters = () => {
     };
 
     useEffect(() => {
-        getResourceTypes().then(data => setResourceTypes(data));
-    }, [getResourceTypes]);
+        setTypes(getTypes());
+    }, [getTypes]);
 
     const handleTypeChange = values => {
-        updateTermFilter(
-            resourceTypes.key,
-            values.map(option => option.value)
-        );
+        updateTypeFilter(values.map(option => option.value));
     };
 
-    const getThematicFiltersTitle = () => {
+    const getTermsTitle = () => {
         let title = ['Thematic filters'];
-        let values = Object.values(filters.terms).filter(([key, _]) =>
-            thematicFilterKeys.includes(key)
-        );
+        let values = Object.values(filters.terms);
 
         if (values.length > 0) {
             title.push(
@@ -90,7 +116,7 @@ const Filters = () => {
         return title;
     };
 
-    const getTemporalFiltersTitle = () => {
+    const getDatesTitle = () => {
         let title = ['Temporal filters'];
         let entries = Object.entries(filters.ranges).filter(
             ([_, value]) => value.from || value.to
@@ -105,13 +131,13 @@ const Filters = () => {
         return title;
     };
 
-    const getSpatialFiltersTitle = () => {
+    const getSpatialTitle = () => {
         let title = ['Spatial filters'];
 
         if (filters.spatial?.area) {
             title.push(
                 ...[
-                    ': ' + filters.spatial.typeOfFilter,
+                    ': ' + filters.spatial.typeOfArea,
                     getClearButton('spatial')
                 ]
             );
@@ -122,31 +148,52 @@ const Filters = () => {
 
     return (
         <MainContainer>
-            <SelectedOptions />
+            <OptionsContainer>
+                {Object.entries(filters.terms).map(([key, terms]) => {
+                    return terms.map(item => (
+                        <StyledChip
+                            variant="outlined"
+                            label={[
+                                <p key="term">{item}</p>,
+                                <p key="key">{termLabels[key]}</p>
+                            ]}
+                            key={key + '-' + item}
+                            onDelete={() => removeTermFromFilter(key, item)}
+                        />
+                    ));
+                })}
+                {Object.entries(filters.ranges).map(([key, range]) => {
+                    return (
+                        <StyledChip
+                            variant="outlined"
+                            label={[
+                                <p key="range">
+                                    {range.from} - {range.to}
+                                </p>,
+                                <p key="key">{dateRanges[key].label}</p>
+                            ]}
+                            key={'range-' + key}
+                            onDelete={() => removeRangeFilter(key)}
+                        />
+                    );
+                })}
+            </OptionsContainer>
             <Tabs
                 emptyTabs={[
-                    resourceTypes && (
-                        <SelectList
-                            label={resourceTypes.label}
-                            options={resourceTypes.options}
-                            multiple={true}
-                            values={resourceTypes.selected}
+                    types && (
+                        <SelectChip
+                            label={types.label}
+                            options={types.options}
+                            multiple={false}
+                            values={types.selected}
                             onChange={handleTypeChange}
+                            fontSize="18px"
                             fullWidth
-                            helperText={resourceTypes.description}
                         />
                     )
                 ]}
-                titles={[
-                    getThematicFiltersTitle(),
-                    getTemporalFiltersTitle(),
-                    getSpatialFiltersTitle()
-                ]}
-                content={[
-                    <ThematicFilters />,
-                    <TemporalFilters />,
-                    <SpatialFilter />
-                ]}
+                titles={[getTermsTitle(), getDatesTitle(), getSpatialTitle()]}
+                content={[<TermFilter />, <RangeFilter />, <SpatialFilter />]}
             />
         </MainContainer>
     );

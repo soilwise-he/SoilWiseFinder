@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
+import { Feature } from 'ol';
+import { Polygon } from 'ol/geom';
 
 import TileLayer from 'components/Map/Layers/TileLayer';
 import VectorLayer from 'components/Map/Layers/VectorLayer';
 import { CartoCDN } from 'components/Map/Sources/BaseMaps';
-import {
-    vector,
-    readGeoJsonFeature,
-    wktVector
-} from 'components/Map/Sources/Vector';
+import { vector, readGeoJsonFeature } from 'components/Map/Sources/Vector';
 import { store } from 'src/context/store';
 import { useMap } from 'src/context/MapContext';
 import { useGeoLocation } from 'src/services/useGeoLocation';
@@ -19,19 +17,19 @@ import {
 } from '../Controls/LocationControls';
 import { getDataStyle, getFilterStyle } from 'src/style/mapStyle';
 import Controls from '../Controls/Controls';
-import DrawControls from '../Controls/DrawControls';
+import DragControl from '../Controls/DrawControls';
 import OnDragBoxEvent from '../Interaction/DragInteraction';
 import { interactionTypes } from 'src/services/settings';
 import ZoomControls from '../Controls/ZoomControls';
 import { mapParameters } from '../../../services/settings';
-import OnDrawFreeformEvent from '../Interaction/DrawInteraction';
+import { fromLonLat } from 'ol/proj';
 
 const SearchMapContent = ({ data }) => {
     const [backgroundLayerSource, setBackgroundLayerSource] = useState();
     const [locationLayerFeature, setLocationLayerFeature] = useState();
     const [dataLayerSource, setDataLayerSource] = useState();
     const [filterLayerSource, setFilterLayerSource] = useState();
-    const { filters } = store();
+    const { filters, area } = store();
     const { zoomToExtent, interaction, setInteraction } = useMap();
     const { locationFeatures } = useGeoLocation();
 
@@ -44,10 +42,23 @@ const SearchMapContent = ({ data }) => {
         setInteraction(null);
 
         if (filters.spatial?.area) {
+            let coordinates = [
+                [filters.spatial.area[0], filters.spatial.area[2]],
+                [filters.spatial.area[1], filters.spatial.area[2]],
+                [filters.spatial.area[1], filters.spatial.area[3]],
+                [filters.spatial.area[0], filters.spatial.area[3]],
+                [filters.spatial.area[0], filters.spatial.area[2]]
+            ];
             setFilterLayerSource(
-                wktVector({
-                    wktFeature: filters.spatial.area,
-                    crs: mapParameters.dataProjection
+                vector({
+                    features: [
+                        new Feature({
+                            geometry: new Polygon([
+                                coordinates.map(item => fromLonLat(item))
+                            ]),
+                            label: 'Bounding box for filter'
+                        })
+                    ]
                 })
             );
         } else {
@@ -137,10 +148,9 @@ const SearchMapContent = ({ data }) => {
                 <ZoomControls originalExtent={mapParameters.europeExtent} />
                 <CurrentLocationControl />
                 <SearchLocationControl />
-                <DrawControls />
+                <DragControl />
             </Controls>
             {interaction === interactionTypes.drag && <OnDragBoxEvent />}
-            {interaction === interactionTypes.draw && <OnDrawFreeformEvent />}
         </div>
     );
 };

@@ -3,19 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRef } from 'react';
 import styled from '@emotion/styled';
-import {
-    Button,
-    IconButton,
-    Popper,
-    TextField,
-    useMediaQuery
-} from '@mui/material';
+import { Button, IconButton, Popper, TextField } from '@mui/material';
 import { default as MagnifierIcon } from '@mui/icons-material/Search';
 import { Clear } from '@mui/icons-material';
 
 import { store } from 'src/context/store';
 import useGetData from 'src/services/getData';
-import muiTheme from 'src/style/theme';
 
 const SearchText = styled.div`
     width: calc(100% - 2px);
@@ -31,23 +24,21 @@ const SearchText = styled.div`
     }
 
     .MuiInput-input {
-        font-size: 1.1rem !important;
+        font-size: 18px !important;
     }
 
-    ${muiTheme.breakpoints.down('sm')} {
-        height: 45px;
+    @media only screen and (max-width: 600px) {
+        .MuiInput-input {
+            font-size: 14px !important;
+        }
     }
 `;
 const SearchIcon = styled(MagnifierIcon)`
     margin: auto 10px auto 22px;
-    color: var(--mui-palette-text-disabled);
+    color: var(--mui-palette-secondary-main);
 
-    ${muiTheme.breakpoints.down('sm')} {
-        display: none;
-
-        + div {
-            margin-left: 20px;
-        }
+    @media only screen and (max-width: 600px) {
+        margin: auto 5px auto 14px;
     }
 `;
 const FilterOptions = styled(Popper)`
@@ -79,23 +70,38 @@ const OptionLabel = styled.span`
     }
 `;
 const SearchButton = styled(Button)`
-    ${muiTheme.breakpoints.down('sm')} {
-        padding: 10px;
-        min-width: fit-content !important;
-    }
+    min-width: 140px;
 `;
 
 const SearchBar = ({ handleSubmit }) => {
     const [searchText, setSearchText] = useState('');
-    const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+    const [filterOptions, setFilterOptions] = useState([]);
+    const [filteredFilterOptions, setFilteredFilterOptions] = useState([]);
     const [anchorElement, setAnchorElement] = useState(null);
-    const previousAnchorElementPosition = useRef(null);
+    const previousAnchorElementPosition = useRef(undefined);
     const { query, setQuery } = store();
-    const { getSuggestions } = useGetData();
+    const { getTerms } = useGetData();
 
     useEffect(() => {
-        setSearchText(query || '');
+        setSearchText(query);
     }, [query]);
+
+    useEffect(() => {
+        let terms = getTerms();
+
+        if (!terms) return;
+
+        let options = Object.entries(terms)
+            .filter(([key, _]) => key !== 'keywords_terms')
+            .flatMap(([key, value]) =>
+                value.options.map(option => ({
+                    id: key + '-' + option.id,
+                    value: option.value
+                }))
+            )
+            .sort((a, b) => (a.value > b.value ? 1 : -1));
+        setFilterOptions(options);
+    }, [getTerms]);
 
     useEffect(() => {
         if (anchorElement) {
@@ -109,36 +115,32 @@ const SearchBar = ({ handleSubmit }) => {
         }
     }, [anchorElement]);
 
-    const handleChange = async event => {
+    const handleChange = event => {
         let value = event.target.value;
 
         if (value === '' || value.slice(-1) === ' ') {
-            setFilteredSuggestions([]);
+            setFilteredFilterOptions([]);
         } else {
             let words = value.split(' ');
             let currentWord = words[words.length - 1];
 
-            let suggestions = await getSuggestions(currentWord);
-
-            setFilteredSuggestions(
-                suggestions
-                    .sort((a, b) => {
-                        if (a.value.startsWith(currentWord.toLowerCase())) {
-                            if (b.value.startsWith(currentWord.toLowerCase())) {
-                                return a.value > b.value ? 1 : -1;
-                            } else {
-                                return -1;
-                            }
-                        } else if (
-                            b.value.startsWith(currentWord.toLowerCase())
-                        ) {
-                            return 1;
-                        } else {
+            let options = filterOptions
+                .filter(item => item.value.includes(currentWord))
+                .sort((a, b) => {
+                    if (a.value.startsWith(currentWord)) {
+                        if (b.value.startsWith(currentWord)) {
                             return a.value > b.value ? 1 : -1;
+                        } else {
+                            return -1;
                         }
-                    })
-                    .slice(0, 10)
-            );
+                    } else if (b.value.startsWith(currentWord)) {
+                        return 1;
+                    } else {
+                        return a.value > b.value ? 1 : -1;
+                    }
+                })
+                .slice(1, 10);
+            setFilteredFilterOptions(options);
         }
 
         const getBoundingClientRect = () => {
@@ -187,7 +189,7 @@ const SearchBar = ({ handleSubmit }) => {
 
             focusElement?.focus();
         } else if (event.code === 'Enter') {
-            setFilteredSuggestions([]);
+            setFilteredFilterOptions([]);
 
             if (event.target.tagName === 'INPUT') {
                 handleSubmit(searchText);
@@ -222,11 +224,11 @@ const SearchBar = ({ handleSubmit }) => {
                 id="search-text"
             />
             <FilterOptions
-                open={filteredSuggestions.length > 0}
+                open={filteredFilterOptions.length > 0}
                 anchorEl={anchorElement}
                 placement="bottom-start"
             >
-                {filteredSuggestions.map(option => (
+                {filteredFilterOptions.map(option => (
                     <Button
                         key={option.id}
                         onClick={handleSelect(option)}
@@ -256,12 +258,9 @@ const SearchBar = ({ handleSubmit }) => {
                 color="primary"
                 variant="contained"
                 onClick={() => handleSubmit(searchText)}
+                label="Search"
             >
-                {useMediaQuery(() => muiTheme.breakpoints.down('sm')) ? (
-                    <MagnifierIcon />
-                ) : (
-                    'search'
-                )}
+                search
             </SearchButton>
         </SearchText>
     );

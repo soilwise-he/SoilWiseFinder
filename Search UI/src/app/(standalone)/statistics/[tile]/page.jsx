@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 
-import NumberOfResources from 'components/Catalogue/Info/Statistics/NumberOfResources';
+import NumberOfResources from 'components/Catalogue/Statistics/NumberOfResources';
 import useGetData from 'src/services/getData';
-import ResourceTypes from 'components/Catalogue/Info/Statistics/ResourceTypes';
-import Decades from 'components/Catalogue/Info/Statistics/Decades';
-import Projects from 'components/Catalogue/Info/Statistics/Projects';
+import ResourceTypes from 'components/Catalogue/Statistics/ResourceTypes';
+import Decades from 'components/Catalogue/Statistics/Decades';
+import Projects from 'components/Catalogue/Statistics/Projects';
 
 const TileContainer = styled.div`
     max-width: 250px;

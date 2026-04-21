@@ -1,193 +1,68 @@
-import ToolTip from 'components/UIElements/ToolTip';
 import HTMLMap from 'src/components/Map/HTMLMap';
-import { fieldDefinitions, mapParameters } from 'src/services/settings';
 import { getDate } from 'src/services/util';
 
-const getElementTitle = field => {
-    return (
-        <ToolTip title={fieldDefinitions[field].description}>
-            {fieldDefinitions[field].label}
-        </ToolTip>
-    );
-};
+const getKeywordChips = keywords => {
+    let uniqueKeywords = keywords.reduce((uniqueKeywords, currentKeyword) => {
+        let keyword = currentKeyword.toLowerCase();
 
-const getKeywordChips = (originalKeywords, matchedKeywords) => {
-    let uniqueKeywords = originalKeywords.reduce(
-        (uniqueKeywords, currentKeyword) => {
-            uniqueKeywords[currentKeyword] = 'original';
+        if (keyword in uniqueKeywords) {
+            uniqueKeywords[keyword] += 1;
+        } else {
+            uniqueKeywords[keyword] = 1;
+        }
 
-            return uniqueKeywords;
-        },
-        {}
-    );
-
-    uniqueKeywords = matchedKeywords.reduce(
-        (uniqueKeywords, currentKeyword) => {
-            if (currentKeyword in uniqueKeywords) {
-                uniqueKeywords[currentKeyword] = 'original_and_matched';
-            } else {
-                uniqueKeywords[currentKeyword] = 'matched';
-            }
-
-            return uniqueKeywords;
-        },
-        uniqueKeywords
-    );
+        return uniqueKeywords;
+    }, {});
 
     return (
-        <div
-            key="keyword-list"
-            id="keyword-list"
-        >
+        <div id="keyword-list">
             {Object.entries(uniqueKeywords)
                 .sort((a, b) => {
-                    if (a[1] === 'matched' && b[1] !== 'matched') {
-                        return -1;
-                    } else if (a[1] !== 'matched' && b[1] === 'matched') {
-                        return 1;
-                    } else if (
-                        a[1] === 'original_and_matched' &&
-                        b[1] === 'original'
-                    ) {
-                        return -1;
-                    } else if (
-                        a[1] === 'original' &&
-                        b[1] === 'original_and_matched'
-                    ) {
-                        return 1;
+                    if (a[1] === b[1]) {
+                        return a[0] > b[0] ? 1 : -1;
                     } else {
-                        return b[0] > a[0];
+                        return b[1] - a[1];
                     }
                 })
-                .map(([keyword, type]) => (
-                    <ToolTip
-                        key={keyword + '_' + type}
-                        title={`This keyword is from the metadata ${type === 'original' ? 'as is' : ' and matched with the Soil Vocabulary'}.`}
+                .map(([keyword, count]) => (
+                    <div
+                        key={keyword}
+                        className={`keyword${count > 1 ? ' multiple' : ''}`}
                     >
-                        <div className={`keyword ${type}`}>{keyword}</div>
-                    </ToolTip>
+                        {keyword}
+                    </div>
                 ))}
         </div>
     );
 };
 
-const getSingularAttributes = item => {
-    let attributes = [];
+const getAuthors = item => {
+    let authors = null;
 
-    ['type', 'license', 'language'].forEach(field => {
-        if (item[field]) {
-            attributes.push(
-                <ToolTip
-                    title={fieldDefinitions[field].description}
-                    key={field}
-                >
-                    <p>
-                        <b>{fieldDefinitions[field].label}: </b> {item[field]}
-                    </p>
-                </ToolTip>
-            );
-        }
-    });
+    if (item.pdf_author) {
+        authors = item.pdf_author?.join(', ');
+    } else if (item.creator) {
+        authors = item.creator?.join(', ');
+    } else if (item.contributor) {
+        authors = item.contributor?.join(', ');
+    } else if (item.organization) {
+        authors = item.organization.join(', ');
+    }
 
-    ['soilmission'].forEach(field => {
-        if (item[field]) {
-            attributes.push(
-                <ToolTip
-                    title={fieldDefinitions[field].description}
-                    key={field}
-                >
-                    <p className="tag">{fieldDefinitions[field].label}</p>
-                </ToolTip>
-            );
-        }
-    });
-
-    return attributes;
+    return authors ? (
+        <p id="authors">
+            <i>{authors}</i>
+        </p>
+    ) : null;
 };
 
-const getDateParagraph = (field, startDate, endDate) => {
+const getDateParagraph = (label, startDate, endDate) => {
     return (
-        <p key={field}>
-            <ToolTip title={fieldDefinitions[field].description}>
-                <b>{fieldDefinitions[field].label}</b>
-            </ToolTip>
+        <p>
+            <b>{label}</b>
             {startDate && getDate(startDate)}
             {endDate && ' to ' + getDate(endDate)}
         </p>
-    );
-};
-
-const getPersonsAndOrganizations = (label, items) => {
-    return (
-        <div id={label + 's'}>
-            {items.map((item, index) => {
-                item = JSON.parse(item);
-
-                return (
-                    <div
-                        className="person_organization"
-                        key={label + '-' + index}
-                    >
-                        {item.person && (
-                            <div className="person">{item.person}</div>
-                        )}
-                        {item.organization && (
-                            <div className={item.person ? '' : 'organization'}>
-                                {item.organization}
-                            </div>
-                        )}
-                    </div>
-                );
-            })}
-        </div>
-    );
-};
-
-const getLinks = (label, items) => {
-    return (
-        <ul>
-            {items.map((item, index) => {
-                item = JSON.parse(item);
-
-                return (
-                    <li
-                        className="link"
-                        key={label + '-' + index}
-                    >
-                        {
-                            <a
-                                href={decodeURIComponent(item.url)}
-                                target="_blank"
-                            >
-                                {item.name || decodeURIComponent(item.url)}
-                            </a>
-                        }
-                    </li>
-                );
-            })}
-        </ul>
-    );
-};
-
-const getList = (label, value) => {
-    return (
-        <ul>
-            {value.map((item, index) => (
-                <li key={label + '-' + index}>{item}</li>
-            ))}
-        </ul>
-    );
-};
-
-const getProject = item => {
-    let project = JSON.parse(item);
-
-    return (
-        <div className="project">
-            <p className="acronym">{project.acronym}</p>
-            <p className="title">{project.title}</p>
-            <p className="grantnumber">Grant number: {project.grantnr}</p>
-        </div>
     );
 };
 
@@ -195,149 +70,243 @@ const getMap = item => {
     return (
         <HTMLMap
             data={{
-                wktFeature: item.spatial,
-                crs: mapParameters.dataProjection
+                wktFeature: item.wkb_geometry,
+                crs: 'EPSG:4326'
             }}
-            key="map"
         />
     );
 };
 
-const getLeftSideElements = document => {
-    let leftSideElements = [];
+const getContact = item => {
+    return (
+        <li key={item.organization + '-' + Math.random()}>
+            <p className="tooltip">
+                {item.url ? (
+                    <a
+                        href={item.url}
+                        target="_blank"
+                    >
+                        {item.organization}
+                    </a>
+                ) : (
+                    item.organization
+                )}
+                <span className="tooltiptext">
+                    {item.address}
+                    <br />
+                    {item.postalCode + ' ' + item.city}
+                    <br />
+                    {(item.region != '' ? item.region + ', ' : '') +
+                        item.country}
+                </span>
+            </p>
+            <p>
+                <span className="contact-item role">
+                    {(item.name != '' ? item.name + ' - ' : '') + item.role}
+                </span>
+                {item.email != '' ? (
+                    <>
+                        <br />
+                        <span className="contact-item email">
+                            <a href={`mailto:${item.email}`}>{item.email}</a>
+                        </span>
+                    </>
+                ) : null}
+                {item.phoneNumber != '' ? (
+                    <>
+                        <br />
+                        <span className="contact-item phone-number">
+                            {item.phoneNumber}
+                        </span>
+                    </>
+                ) : null}
+                {item.faxNumber != '' ? (
+                    <>
+                        <br />
+                        <span className="contact-item fax-number">
+                            {item.faxNumber}
+                        </span>
+                    </>
+                ) : null}
+            </p>
+        </li>
+    );
+};
 
-    leftSideElements.push(
-        <h1
-            key="title"
-            dangerouslySetInnerHTML={{ __html: document.title }}
-        />
+const getThemes = item => {
+    return (
+        <div id="themes">
+            {item.themes_thesaurus.map((thesaurus, index) => {
+                if (thesaurus == '') return null;
+
+                let parsedThesaurus = JSON.parse(thesaurus);
+                let parsedKeywords = JSON.parse(item.themes_keywords[index]);
+
+                return (
+                    <div
+                        key={'theme-' + index}
+                        className="theme"
+                    >
+                        <p className="thesaurus">
+                            <b>
+                                {parsedThesaurus.url ? (
+                                    <a
+                                        href={parsedThesaurus.url}
+                                        target="_blank"
+                                    >
+                                        {parsedThesaurus.title}
+                                    </a>
+                                ) : (
+                                    parsedThesaurus.title
+                                )}
+                            </b>
+                        </p>
+                        <p>
+                            {parsedKeywords.map((keyword, index) => {
+                                let name =
+                                    (index > 0 ? ', ' : '') + keyword.name;
+
+                                return keyword.url ? (
+                                    <a
+                                        key={'url-' + index}
+                                        href={keyword.url}
+                                        target="_blank"
+                                    >
+                                        {name}
+                                    </a>
+                                ) : (
+                                    name
+                                );
+                            })}
+                        </p>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+export function Resource(document) {
+    if (document.document) document = document.document;
+
+    let featuredImage = null;
+
+    if (document.wkb_geometry) {
+        featuredImage = getMap(document);
+    }
+
+    let rightSideElements = {};
+
+    rightSideElements['Resource type'] = <p>{document.type}</p>;
+
+    if (document.type === 'Journal Article') {
+        rightSideElements['Journal'] = <p>{document.parentidentifier}</p>;
+    }
+
+    rightSideElements['Dates'] = (
+        <div>
+            {(document.date_creation || document.date_publication) &&
+                getDateParagraph(
+                    'Issued: ',
+                    document.date_creation || document.date_publication
+                )}
+            {(document.date_modified || document.date_revised) &&
+                getDateParagraph(
+                    'Last changed: ',
+                    document.date_modified || document.date_revised
+                )}
+            {getDateParagraph('Last harvested: ', document.insert_date)}
+            {(document.time_begin || document.time_end) &&
+                getDateParagraph(
+                    'Temporal coverage: ',
+                    document.time_begin,
+                    document.time_end
+                )}
+        </div>
     );
 
-    if (document.abstract) {
-        leftSideElements.push(
-            <div
-                key="abstract"
-                dangerouslySetInnerHTML={{
-                    __html: document.abstract
-                }}
-            />
+    if (document.contacts_organization?.length > 0) {
+        rightSideElements['Contact'] = (
+            <ul id="contacts">
+                {document.contacts_organization.map((organization, index) =>
+                    getContact({
+                        organization: organization,
+                        url:
+                            document.contacts_organization_url[index] ||
+                            (document.contacts_onlineresource[index] &&
+                                JSON.parse(
+                                    document.contacts_onlineresource[index]
+                                ).url),
+                        address: document.contacts_address[index],
+                        postalCode: document.contacts_postcode[index],
+                        city: document.contacts_city[index],
+                        region: document.contacts_region[index],
+                        country: document.contacts_country[index],
+                        name:
+                            document.contacts_name[index] ||
+                            document.contacts_name_url[index],
+                        role: document.contacts_role[index],
+                        email: document.contacts_email[index],
+                        phoneNumber: document.contacts_phone[index],
+                        faxNumber: document.contacts_fax[index]
+                    })
+                )}
+            </ul>
         );
     }
 
-    if (document.subjects) {
-        leftSideElements.push(
-            getKeywordChips(document.subjects, document.matched_subjects || [])
-        );
-    }
+    rightSideElements['Links'] = (
+        <ul id="links">
+            {document.links_url.map(
+                (link, index) =>
+                    link != '' && (
+                        <li
+                            key={'link-' + index}
+                            className="link"
+                        >
+                            <a
+                                href={link}
+                                target="_blank"
+                            >
+                                {document.links_name[index] || link}
+                            </a>
+                        </li>
+                    )
+            )}
+        </ul>
+    );
 
-    return leftSideElements;
-};
-
-const getRightSideElements = document => {
-    let rightSideElements = [];
-
-    rightSideElements.push([null, getSingularAttributes(document)]);
-
-    let dateElements = [
-        'date_creation',
-        'date_revision',
-        'date_publication',
-        'date_harvest'
-    ].map(field => document[field] && getDateParagraph(field, document[field]));
-
-    if (dateElements.filter(item => item != undefined).length > 0) {
-        rightSideElements.push(['Dates', <div>{dateElements}</div>]);
-    }
-
-    if (document.view_authors) {
-        rightSideElements.push([
-            getElementTitle('view_authors'),
-            getPersonsAndOrganizations('author', document.view_authors)
-        ]);
-    }
-
-    if (document.view_contacts) {
-        rightSideElements.push([
-            getElementTitle('view_contacts'),
-            getPersonsAndOrganizations('contact', document.view_contacts)
-        ]);
-    }
-
-    if (document.sources) {
-        rightSideElements.push([
-            getElementTitle('sources'),
-            getList('source', document.sources)
-        ]);
-    }
-
-    if (document.projects) {
-        rightSideElements.push([
-            getElementTitle('projects'),
-            getProject(document.projects[0])
-        ]);
-    }
-
-    if (document.links) {
-        rightSideElements.push([
-            getElementTitle('links'),
-            getLinks('link', document.links)
-        ]);
-    }
-
-    return rightSideElements;
-};
-
-export function Resource({ document }) {
-    if (!document) return <div>No resource with this identifier</div>;
-
-    let featuredImages = [];
-
-    if (document.spatial) {
-        featuredImages.push(getMap(document));
-    }
-
-    if (document.thumbnail) {
-        featuredImages.push(
-            <img
-                key="thumbnail"
-                src={document.thumbnail}
-                alt="thumbnail"
-            />
-        );
-    }
+    if (document.themes_thesaurus)
+        rightSideElements['Themes'] = getThemes(document);
 
     return (
         <div id="main-container">
-            <div id="left-side-container">{getLeftSideElements(document)}</div>
-            <div id="right-side-container">
-                {featuredImages.map((featuredImage, index) => (
+            <div id="left-side-container">
+                <h1>{document.title}</h1>
+                {getAuthors(document)}
+                {document.abstract && (
                     <div
-                        key={'featured-image-' + index}
-                        className="featured-image"
-                    >
-                        {featuredImage}
-                    </div>
-                ))}
+                        dangerouslySetInnerHTML={{
+                            __html: document.abstract
+                        }}
+                    />
+                )}
+                {document.keywords && getKeywordChips(document.keywords)}
+            </div>
+            <div id="right-side-container">
+                {featuredImage && (
+                    <div id="featured-image">{featuredImage}</div>
+                )}
                 <div
                     id="attributes-container"
-                    className={
-                        featuredImages.length == 0
-                            ? ''
-                            : featuredImages.length == 1
-                              ? 'include-image'
-                              : 'include-images'
-                    }
+                    className={featuredImage ? 'includeImage' : ''}
                 >
-                    {getRightSideElements(document).map(
-                        ([label, value], index) => (
-                            <div key={'right-' + index}>
-                                {label && (
-                                    <p className="attribute-title">{label}</p>
-                                )}
-                                {value}
-                            </div>
-                        )
-                    )}
+                    {Object.entries(rightSideElements).map(([label, value]) => (
+                        <div key={label}>
+                            <p className="attribute-title">{label}</p>
+                            {value}
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>

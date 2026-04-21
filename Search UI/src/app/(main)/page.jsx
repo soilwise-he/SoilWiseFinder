@@ -2,13 +2,13 @@
 
 import styled from '@emotion/styled';
 
-import Introduction from 'components/Catalogue/Info/Introduction';
-import ForDataProviders from 'components/Catalogue/Info/ForDataProviders';
-import ForDataUsers from 'components/Catalogue/Info/ForDataUsers';
-import Statistics from 'components/Catalogue/Info/Statistics';
-import RecentEntries from 'components/Catalogue/Info/RecentEntries';
-import News from 'components/Catalogue/Info/News';
-import Contact from 'components/Catalogue/Info/Contact';
+import Introduction from 'components/Catalogue/Introduction';
+import ForDataProviders from 'components/Catalogue/ForDataProviders';
+import ForDataUsers from 'components/Catalogue/ForDataUsers';
+import Statistics from 'components/Catalogue/Statistics';
+import RecentEntries from 'components/Catalogue/RecentEntries';
+import News from 'components/Catalogue/News';
+import Contact from 'components/Catalogue/Contact';
 
 const MainContainer = styled.div`
     display: flex;

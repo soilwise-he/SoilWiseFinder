@@ -2,29 +2,26 @@
 
 import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
+import { Container } from '@mui/material';
 
 import useGetData from 'src/services/getData';
-import NewsItem from 'components/Catalogue/News/NewsItem';
+import NewsItem from './NewsItem';
 
-const MainContainer = styled.div`
-    max-width: 330px;
-    height: 305px;
-
-    > a {
-        display: block;
-        height: 100%;
-    }
+const MainContainer = styled(Container)`
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
 `;
 
-export default function News({ params }) {
+const News = () => {
     const { getNews } = useGetData();
     const [news, setNews] = useState([]);
 
     useEffect(() => {
-        params.then(items => {
-            getNews().then(data => {
-                let item = data[parseInt(items.number) - 1];
-                item = {
+        getNews().then(data => {
+            setNews(
+                data.map(item => ({
                     ...item,
                     summary:
                         item.summary.substring(0, 1) != '<'
@@ -38,12 +35,21 @@ export default function News({ params }) {
                         item.link.indexOf('//') + 2,
                         item.link.indexOf('/', item.link.indexOf('//') + 2)
                     )
-                };
-
-                setNews(<NewsItem item={item} />);
-            });
+                }))
+            );
         });
     }, []);
 
-    return <MainContainer>{news}</MainContainer>;
-}
+    return (
+        <MainContainer>
+            {news.map((item, index) => (
+                <NewsItem
+                    item={item}
+                    key={'news-' + index}
+                />
+            ))}
+        </MainContainer>
+    );
+};
+
+export default News;

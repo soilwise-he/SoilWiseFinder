@@ -21,7 +21,6 @@ const RadioControl = ({ labels, options, value, handleChange }) => {
 
 RadioControl.propTypes = {
     labels: PropTypes.array,
-    options: PropTypes.array,
     value: PropTypes.string,
     handleChange: PropTypes.func
 };

@@ -1,31 +1,33 @@
-import { useEffect } from 'react';
-import { Draw } from 'ol/interaction';
+import { useCallback } from 'react';
+import PropTypes from 'prop-types';
 
-import { useMap } from 'src/context/MapContext';
-import { store } from 'src/context/store';
+import { useDrawnFeature } from '../../../services/useFeatureSelection';
 
-const OnDrawFreeformEvent = () => {
-    const { map } = useMap();
-    const { setPolygon } = store();
+const DrawInteraction = ({ source }) => {
+    const { setSelectedFeature } = useDrawnFeature();
 
-    useEffect(() => {
-        if (!map) return;
+    const handleDrawStart = useCallback(() => {
+        source.refresh();
+    }, [source]);
 
-        let drawFreeform = new Draw({
-            type: 'Polygon'
-        });
-        map.addInteraction(drawFreeform);
+    const handleDrawEnd = useCallback(
+        async ({ drawnFeature }) => {
+            setSelectedFeature(drawnFeature);
+        },
+        [setSelectedFeature]
+    );
 
-        drawFreeform.on('drawend', function (event) {
-            setPolygon(event.feature);
-        });
-
-        return () => {
-            map.removeInteraction(drawFreeform);
-        };
-    }, [map]);
-
-    return null;
+    return (
+        <OnDrawEvent
+            drawSource={source}
+            onDrawStartFunction={handleDrawStart}
+            onDrawEndFunction={handleDrawEnd}
+        />
+    );
 };
 
-export default OnDrawFreeformEvent;
+DrawInteraction.propTypes = {
+    source: PropTypes.object
+};
+
+export default DrawInteraction;

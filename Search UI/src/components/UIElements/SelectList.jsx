@@ -2,14 +2,8 @@ import PropTypes from 'prop-types';
 import styled from '@emotion/styled';
 import FormControl from '@mui/material/FormControl';
 import { Autocomplete, TextField } from '@mui/material';
-import ToolTip from './ToolTip';
 
 const StyledMuiAutocomplete = styled(Autocomplete)`
-    .MuiInputBase-root {
-        padding-left: var(--mui-spacing-0);
-        font-size: 0.9rem;
-    }
-
     .MuiFormControl-root {
         border-radius: 100px;
     }
@@ -55,15 +49,11 @@ const SelectList = ({
                 freeSolo
                 renderValue={value => <div>{value.length + ' selected'}</div>}
                 renderInput={params => (
-                    <ToolTip
-                        title={helperText}
-                        placement="top"
-                    >
-                        <TextField
-                            {...params}
-                            label={label}
-                        />
-                    </ToolTip>
+                    <TextField
+                        {...params}
+                        label={label}
+                        helperText={helperText}
+                    />
                 )}
                 onChange={handleChange}
                 {...props}

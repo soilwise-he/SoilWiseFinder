@@ -9,30 +9,36 @@ import SelectChip from 'components/UIElements/SelectChip';
 import RadioControl from 'components/UIElements/RadioControl';
 import { store } from 'src/context/store';
 import { getExtent } from 'src/services/util';
-import { typeOfSpatialFilters } from 'src/services/settings';
+import { typeOfAreas } from 'src/services/settings';
 import SearchMapContent from 'src/components/Map/MapContent/SearchMapContent';
 import { IsWithinIcon, OverlapsIcon } from 'assets/icons';
 
 const SpatialContainer = styled.div`
     display: flex;
+    flex-direction: column;
     gap: 20px;
 
     width: 100%;
-    height: 500px;
+    height: 600px;
 `;
 
 const FilterOptions = styled.div`
     display: flex;
     gap: 20px 40px;
-    justify-content: flex-start;
-    flex-direction: column;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    align-items: center;
 `;
 
 const SelectLists = styled.div`
     display: flex;
     gap: 20px;
-    flex-direction: column;
-    flex: 1 1 100%;
+    justify-content: space-between;
+    flex: 0 1 60%;
+
+    .MuiFormControl-root {
+        flex: 1 1 50%;
+    }
 `;
 
 const RadioLabel = styled.div`
@@ -50,7 +56,7 @@ const SpatialFilter = () => {
         country: [],
         region: [],
         feature: null,
-        typeOfFilter: typeOfSpatialFilters.overlap
+        typeOfArea: typeOfAreas.overlap
     });
     const { getCountries, getRegions } = useGetData();
 
@@ -70,15 +76,15 @@ const SpatialFilter = () => {
         if (selected.feature?.geoJsonFeature) {
             setSpatialFilter(
                 getExtent(selected.feature.geoJsonFeature.geometry.coordinates),
-                selected.typeOfFilter
+                selected.typeOfArea
             );
         } else if (selected.feature?.olFeature) {
             setSpatialFilter(
-                selected.feature.olFeature.getGeometry(),
-                selected.typeOfFilter
+                selected.feature.olFeature.getGeometry().getExtent(),
+                selected.typeOfArea
             );
         }
-    }, [selected.feature, selected.typeOfFilter]);
+    }, [selected.feature, selected.typeOfArea]);
 
     useEffect(() => {
         let feature = null;
@@ -137,10 +143,10 @@ const SpatialFilter = () => {
                     }
                 }
             }));
-        } else if (key === 'typeOfFilter') {
+        } else if (key === 'typeOfArea') {
             setSelected(previous => ({
                 ...previous,
-                typeOfFilter: value
+                typeOfArea: value
             }));
         }
     };
@@ -152,20 +158,17 @@ const SpatialFilter = () => {
                     <RadioControl
                         labels={[
                             <RadioLabel>
-                                <div>{typeOfSpatialFilters.overlap}</div>
+                                <div>{typeOfAreas.overlap}</div>
                                 <OverlapsIcon />
                             </RadioLabel>,
                             <RadioLabel>
-                                <div>{typeOfSpatialFilters.within}</div>
+                                <div>{typeOfAreas.within}</div>
                                 <IsWithinIcon />
                             </RadioLabel>
                         ]}
-                        options={[
-                            typeOfSpatialFilters.overlap,
-                            typeOfSpatialFilters.within
-                        ]}
-                        value={selected.typeOfFilter}
-                        handleChange={getChangeHandler('typeOfFilter')}
+                        options={[typeOfAreas.overlap, typeOfAreas.within]}
+                        value={selected.typeOfArea}
+                        handleChange={getChangeHandler('typeOfArea')}
                     />
                     <SelectLists>
                         <SelectChip
@@ -176,7 +179,6 @@ const SpatialFilter = () => {
                             values={selected.country}
                             onChange={getChangeHandler('country')}
                             fontSize="18px"
-                            fullWidth
                         />
                         <SelectChip
                             key={'regions'}
@@ -187,7 +189,6 @@ const SpatialFilter = () => {
                             onChange={getChangeHandler('region')}
                             fontSize="18px"
                             disabled={!regions?.length}
-                            fullWidth
                         />
                     </SelectLists>
                 </FilterOptions>

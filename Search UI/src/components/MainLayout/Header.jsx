@@ -7,7 +7,6 @@ const MenuItems = styled.div`
     display: flex;
     gap: var(--mui-spacing-1);
 `;
-
 const MenuLink = styled.a`
     font-size: 1rem;
     color: white;

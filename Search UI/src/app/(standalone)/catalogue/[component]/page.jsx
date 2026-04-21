@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import SearchBar from 'components/Catalogue/Search/SearchBar';
-import SoilCompanion from 'components/Catalogue/Info/SoilCompanion';
+import SoilCompanion from 'components/Catalogue/SoilCompanion';
 import { store } from 'src/context/store';
 import { paths } from 'src/services/settings';
 

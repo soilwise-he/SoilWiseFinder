@@ -1,7 +1,6 @@
 import { Vector as VectorSource } from 'ol/source';
 import GeoJSON from 'ol/format/GeoJSON';
 import WKT from 'ol/format/WKT';
-import { mapParameters } from 'src/services/settings';
 
 export function vector({ features }) {
     return new VectorSource({ features });
@@ -17,7 +16,7 @@ export function readWktFeature({ wktFeature, crs }) {
     try {
         const feature = wkt.readFeature(wktFeature, {
             dataProjection: crs,
-            featureProjection: mapParameters.defaultProjection
+            featureProjection: 'EPSG:3857'
         });
 
         return feature;

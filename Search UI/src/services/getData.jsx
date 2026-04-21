@@ -1,14 +1,13 @@
 import { useCallback } from 'react';
 
 import {
+    termLabels,
     getBaseUrlApi,
     pyscwApiUrl,
-    typeOfSpatialFilters,
+    typeOfAreas,
     solrFacets,
-    defaultRange,
-    resourceTypeFilterKey,
-    filterDefinitions,
-    nestedTerms
+    dateRanges,
+    defaultRange
 } from './settings';
 import { store } from 'src/context/store';
 
@@ -82,31 +81,16 @@ const useGetData = () => {
     const getStatistics = useCallback(() => {
         if (!facets) return;
 
-        let types = Object.entries(
-            Object.values(facets)
-                .flat()
-                .filter(([key, _]) => key === 'type_terms')
-                .map(([_, value]) => value)[0]
-        )
-            .filter(item => item[0] !== 'Other')
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5);
-
-        let projects = Object.entries(
-            Object.values(facets)
-                .flat()
-                .filter(([key, _]) => key === 'project_acronyms_terms')
-                .map(([_, value]) => value)[0]
-        )
+        let types = facets.type_terms.buckets
             .sort((a, b) => b.count - a.count)
-            .slice(0, 3);
-
-        let dates = Object.values(facets)
-            .flat()
-            .filter(([key, _]) => key === 'date_range')
-            .map(([_, value]) => value)[0];
+            .slice(0, 4);
         let startYear =
-            Math.floor((new Date(dates[0]).getFullYear() - 1900) / 10) * 10 +
+            Math.floor(
+                (new Date(facets.date_range.buckets[0].val).getFullYear() -
+                    1900) /
+                    10
+            ) *
+                10 +
             1900;
         let countsPerDecade = Array.from(
             {
@@ -119,14 +103,12 @@ const useGetData = () => {
             })
         );
 
-        for (let item of dates[2]) {
+        for (let item of facets.date_range.buckets) {
             let currentDecade =
                 Math.ceil((new Date(item.val).getFullYear() - startYear) / 10) -
                 1;
 
             if (currentDecade < 0) currentDecade = 0;
-
-            if (currentDecade > 9) currentDecade = 9;
 
             countsPerDecade[currentDecade].count += item.count;
         }
@@ -134,51 +116,65 @@ const useGetData = () => {
         while (countsPerDecade[0].count < 100) {
             countsPerDecade = countsPerDecade.slice(1);
         }
-        console.log(types);
 
         return {
-            numberOfResources: pagination.numberOfItems,
-            typeDistribution: types.map(item => ({
-                id: item[0],
-                label: item[0],
-                value: item[1]
-            })),
+            numberOfResources: facets.count,
+            typeDistribution: [
+                ...types.map(item => ({
+                    id: item.val,
+                    label: item.val,
+                    value: item.count
+                })),
+                {
+                    id: 'other',
+                    label: 'other',
+                    value:
+                        facets.count -
+                        types.reduce(
+                            (sumValue, currentItem) =>
+                                sumValue + currentItem.count,
+                            0
+                        )
+                }
+            ],
             temporalDistribution: {
-                startYear: countsPerDecade?.[0].startYear,
-                countsPerDecade: countsPerDecade?.map(item => ({
+                startYear: countsPerDecade[0].startYear,
+                countsPerDecade: countsPerDecade.map(item => ({
                     decade: item.startYear + ' - ' + item.endYear,
                     count: item.count,
                     isCoveredInFull: item.endYear <= new Date().getFullYear()
                 }))
             },
-            projects
+            projects: facets.project_acronym_terms.buckets
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 3)
         };
     }, [facets]);
 
     const getLatestInsert = async () => {
         let data = await fetchData(`solr/search`, {
             query: '*:*',
-            sort: 'date_harvest desc',
+            sort: 'insert_date desc',
             params: {
                 rows: 1
             }
         }).then(async lastEntry => {
-            let harvestDate = lastEntry.response.docs[0].date_harvest.substring(
+            let insertDate = lastEntry.response.docs[0].insert_date.substring(
                 0,
-                lastEntry.response.docs[0].date_harvest.indexOf('T')
+                lastEntry.response.docs[0].insert_date.indexOf('T')
             );
             const solrResponse = await fetchData(`solr/search`, {
                 query: '*:*',
                 filter:
-                    'date_harvest:[' +
-                    harvestDate +
+                    'insert_date:[' +
+                    insertDate +
                     'T00:00:00Z TO ' +
-                    harvestDate +
+                    insertDate +
                     'T23:59:59Z]'
             });
 
             return {
-                date: harvestDate,
+                date: insertDate,
                 count: solrResponse.responseHeader.numFound
             };
         });
@@ -189,7 +185,7 @@ const useGetData = () => {
     const getRecentEntries = async () => {
         const solrResponse = await fetchData(`solr/search`, {
             query: '*:*',
-            sort: 'date_harvest desc, date desc',
+            sort: 'date_creation desc, date_publication desc, insert_date desc',
             params: {
                 rows: 3
             }
@@ -211,216 +207,198 @@ const useGetData = () => {
     };
 
     const getResources = useCallback(
-        (query, filters, sort, all = false) => {
-            let solrParameters = {
-                mm: '2<75%',
-                df: 'title',
-                ps: 2.0,
-                tie: 0.1,
-                qf: `title^2 abstract^2 subjects^1 matched_subjects^2 view_authors^2`,
-                pf: `title^8 abstract^4 subjects^1 matched_subjects^2 view_authors^8`,
-                defType: 'edismax',
-                rows: all
-                    ? pagination.numberOfItems
-                    : pagination.numberOfItemsPerPage,
-                start: all
-                    ? 0
-                    : pagination.pageIndex * pagination.numberOfItemsPerPage,
-                hl: true,
-                'hl.fragsize': 500,
-                'hl.tag.pre': '<strong>',
-                'hl.tag.post': '</strong>'
-            };
+        (query, filters, sort) => {
             let solrFilters = [];
+
+            if (filters.type.length > 0) {
+                solrFilters.push(
+                    'type:(' +
+                        filters.type.map(item => '"' + item + '"').join(' ') +
+                        ')'
+                );
+            }
 
             solrFilters = [
                 ...solrFilters,
-                ...filters.choices.map(
-                    key => key.replace('_query', '') + ':(true)'
-                ),
-                ...Object.entries(filters.terms).map(([key, value]) =>
-                    value
-                        .map(
-                            item =>
-                                key.replace('_terms', '') +
-                                ':' +
-                                item.replaceAll(' ', '*')
-                        )
-                        .join(' OR ')
+                ...Object.entries(filters.terms).map(
+                    ([key, value]) =>
+                        key.replace('_terms', '') +
+                        ':(' +
+                        value.map(item => '"' + item + '"').join(' ') +
+                        ')'
                 )
             ];
 
             for (let [key, value] of Object.entries(filters.ranges)) {
-                solrFilters.push(
-                    (solrFacets[key].subtype === 'period'
-                        ? '{!field f=' + solrFacets[key].field + ' op=Within}'
-                        : solrFacets[key].field + ':') +
-                        '[' +
-                        (value.from ? value.from : defaultRange.minimum) +
-                        '-01-01T00:00:00Z' +
-                        ' TO ' +
-                        (value.to ? value.to : defaultRange.maximum) +
-                        '-12-31T23:59:59Z' +
-                        ']'
-                );
+                if (dateRanges[key].type === 'and') {
+                    solrFilters.push(
+                        ...dateRanges[key].attributes.map(
+                            attributeKey =>
+                                attributeKey.replace('_range', '') +
+                                ':[' +
+                                (key.from ? value.from : defaultRange.minimum) +
+                                '-01-01T00:00:00Z' +
+                                ' TO ' +
+                                (value.to ? value.to : defaultRange.maximum) +
+                                '-12-31T23:59:59Z' +
+                                ']'
+                        )
+                    );
+                } else {
+                    solrFilters.push({
+                        bool: {
+                            should: dateRanges[key].attributes.map(
+                                attributeKey =>
+                                    attributeKey.replace('_range', '') +
+                                    ':[' +
+                                    (key.from
+                                        ? value.from + '-01-01T00:00:00Z'
+                                        : '*') +
+                                    ' TO ' +
+                                    (value.to
+                                        ? value.to + '-12-31T23:59:59Z'
+                                        : '*') +
+                                    ']'
+                            )
+                        }
+                    });
+                }
             }
 
-            if (filters.spatial?.area) {
-                solrParameters['fq'] =
-                    `spatial:"${filters.spatial.typeOfFilter === typeOfSpatialFilters.overlap ? 'Intersects' : 'Within'}(${filters.spatial.area})"`;
-            }
+            if (filters.spatial?.area)
+                solrFilters.push(
+                    `{!field f=wkb_envelope score=overlapRatio}${filters.spatial.typeOfArea == typeOfAreas.overlap ? 'Intersects' : 'Within'}(ENVELOPE(${filters.spatial.area.join(',')}))`
+                );
 
             return fetchData(`solr/search`, {
-                query: query || '*',
+                query: query || '*:*',
                 filter: solrFilters,
                 sort: sort,
                 facet: solrFacets,
-                params: solrParameters
+                params: {
+                    mm: '2<75%',
+                    df: 'title',
+                    ps: 2.0,
+                    tie: 0.1,
+                    qf: `title^2 abstract^2 keywords^4 pdf_content^1`,
+                    pf: `title^8 abstract^4 keywords^8 pdf_content^1`,
+                    defType: 'edismax',
+                    rows: pagination.numberOfItemsPerPage,
+                    start:
+                        pagination.pageIndex * pagination.numberOfItemsPerPage,
+                    hl: true,
+                    'hl.fragsize': 500,
+                    'hl.tag.pre': '<strong>',
+                    'hl.tag.post': '</strong>'
+                }
             });
         },
         [pagination.pageIndex, pagination.numberOfItemsPerPage]
     );
 
-    const getTerms = useCallback(
-        async keys => {
-            if (!facets) return;
+    const getTypes = useCallback(() => {
+        if (!facets) return;
 
-            return await Object.values(facets).reduce(
-                (result, values) => [
-                    ...result,
-                    ...values
-                        .filter(
-                            ([key, _]) =>
-                                key.includes('terms') &&
-                                (!keys || keys.includes(key))
-                        )
-                        .map(async ([key, value]) => {
-                            let options;
-
-                            if (nestedTerms.includes(key)) {
-                                options = await getKeywordHierarchy(
-                                    Object.keys(value)
-                                );
-                            } else {
-                                options = Object.entries(value)
-                                    .filter(
-                                        ([option, count]) =>
-                                            (key !== 'type_terms' &&
-                                                key !== 'language_terms') ||
-                                            (key === 'type_terms' &&
-                                                count >= 25) ||
-                                            (key === 'language_terms' &&
-                                                option.length <= 3)
-                                    )
-                                    .map(([option, _], index) => ({
-                                        id: index,
-                                        value: option
-                                    }));
-                            }
-
-                            return {
-                                key,
-                                label: filterDefinitions[key].label,
-                                description: filterDefinitions[key].description,
-                                selected:
-                                    key in filters.terms
-                                        ? options.filter(option =>
-                                              filters.terms[key].includes(
-                                                  option.value
-                                              )
-                                          )
-                                        : [],
-                                options: options.sort((a, b) => {
-                                    if (a.value > b.value) {
-                                        return 1;
-                                    } else if (a.value < b.value) {
-                                        return -1;
-                                    } else {
-                                        return 0;
-                                    }
-                                })
-                            };
-                        })
-                ],
-                []
-            );
-        },
-        [facets, filters.terms]
-    );
-
-    const getResourceTypes = useCallback(async () => {
-        let resourceTypes = await getTerms([resourceTypeFilterKey]);
-
-        return resourceTypes?.[0];
-    }, [getTerms]);
-
-    const getSuggestions = async query => {
-        let suggestions = await fetchPyscwData(
-            `vocab/api/v1/concepts/search?q=${query}&limit=100&offset=0&type=property`
-        ).then(response => response.results);
-
-        return suggestions.map(item => ({
-            id: item.label.toLowerCase(),
-            value: item.label.toLowerCase()
+        let key = 'type_terms';
+        let options = facets[key]?.buckets.map((item, index) => ({
+            id: index,
+            value: item.val
         }));
-    };
 
-    const getChoices = useCallback(
-        keys => {
-            if (!facets) return;
+        return {
+            label: termLabels[key],
+            selected:
+                filters.type && options
+                    ? options.filter(option =>
+                          filters.type.includes(option.value)
+                      )
+                    : [],
+            options: options || []
+        };
+    }, [facets, filters.type]);
 
-            return Object.values(facets).reduce(
-                (result, values) => [
-                    ...result,
-                    ...values
-                        .filter(
-                            ([key, _]) =>
-                                key.includes('query') &&
-                                (!keys || keys.includes(key))
-                        )
-                        .map(([key, _]) => ({
-                            key,
-                            label: filterDefinitions[key].label,
-                            description: filterDefinitions[key].description,
-                            selected: filters.choices.includes(key)
-                        }))
-                ],
-                []
-            );
-        },
-        [facets, filters.choices]
-    );
+    const getTerms = useCallback(() => {
+        if (!facets) return;
 
-    const getRanges = useCallback(
-        keys => {
-            if (!facets) return;
+        return Object.fromEntries(
+            Object.entries(facets)
+                .filter(
+                    ([key, value]) =>
+                        key.endsWith('terms') && value.buckets.length > 0
+                )
+                .map(([key, value]) => {
+                    let options = value.buckets.map((item, index) => ({
+                        id: index,
+                        value: item.val
+                    }));
 
-            return Object.values(facets).reduce(
-                (result, values) => [
-                    ...result,
-                    ...values
-                        .filter(
-                            ([key, _]) =>
-                                key.includes('range') &&
-                                (!keys || keys.includes(key))
-                        )
-                        .map(([key, value]) => ({
-                            key,
-                            label: filterDefinitions[key].label,
-                            description: filterDefinitions[key].description,
+                    return [
+                        key,
+                        {
+                            label: termLabels[key],
+                            selected:
+                                key in filters.terms
+                                    ? options.filter(option =>
+                                          filters.terms[key].includes(
+                                              option.value
+                                          )
+                                      )
+                                    : [],
+                            options: options
+                        }
+                    ];
+                })
+        );
+    }, [facets, filters.terms]);
+
+    const getRanges = useCallback(() => {
+        if (!facets) return;
+
+        let relevantFacets = Object.entries(facets)
+            .filter(
+                ([key, value]) =>
+                    key.endsWith('range') && value.buckets.length > 1
+            )
+            .map(([key, _]) => key);
+
+        return Object.fromEntries(
+            Object.entries(dateRanges)
+                .filter(([_, value]) =>
+                    value.attributes.reduce(
+                        (accumulator, currentValue) =>
+                            accumulator &&
+                            relevantFacets.includes(currentValue),
+                        true
+                    )
+                )
+                .map(([key, value]) => {
+                    return [
+                        key,
+                        {
+                            label: value.label,
                             selected:
                                 key in filters.ranges
                                     ? filters.ranges[key]
                                     : { from: null, to: null },
-                            minimum: parseInt(value[0]),
-                            maximum: parseInt(value[1]) + defaultRange.gap
-                        }))
-                ],
-                []
-            );
-        },
-        [facets, filters.ranges]
-    );
+                            minimum: Math.min(
+                                ...value.attributes.map(item =>
+                                    new Date(
+                                        facets[item].buckets[0].val
+                                    ).getFullYear()
+                                )
+                            ),
+                            maximum: Math.min(
+                                ...value.attributes.map(item =>
+                                    new Date(
+                                        facets[item].buckets.at(-1).val
+                                    ).getFullYear()
+                                )
+                            )
+                        }
+                    ];
+                })
+        );
+    }, [facets, filters.ranges]);
 
     const getCountries = useCallback(async () => {
         const countries = await import('src/assets/countries.json');
@@ -458,57 +436,6 @@ const useGetData = () => {
         }
     }, []);
 
-    const getBroaderKeywords = async (narrowerKeyword, keywordHierarchy) => {
-        keywordHierarchy = [narrowerKeyword, ...keywordHierarchy];
-
-        let response = await fetchPyscwData(
-            `vocab/api/v1/concepts/${narrowerKeyword.replaceAll(' ', '')}`
-        );
-
-        if (response.broader?.length > 0) {
-            return await getBroaderKeywords(
-                response.broader[0].label,
-                keywordHierarchy
-            );
-        } else {
-            return keywordHierarchy;
-        }
-    };
-
-    const keywordHierachyListToDictionary = (items, dictionary) => {
-        let currentDictionary = dictionary;
-
-        items.forEach(item => {
-            if (!(item in currentDictionary)) {
-                currentDictionary[item] = {};
-            }
-
-            currentDictionary = currentDictionary[item];
-        });
-
-        return dictionary;
-    };
-
-    const getKeywordHierarchy = async keywords => {
-        let keywordHierarchyList = [];
-
-        for (let keyword of keywords) {
-            let data = await getBroaderKeywords(keyword, []);
-            keywordHierarchyList.push(data);
-        }
-
-        let currentHierarchy = {};
-
-        for (let keywordList of keywordHierarchyList) {
-            currentHierarchy = keywordHierachyListToDictionary(
-                keywordList,
-                currentHierarchy
-            );
-        }
-
-        return currentHierarchy;
-    };
-
     return {
         getStatistics,
         getLatestInsert,
@@ -516,14 +443,11 @@ const useGetData = () => {
         getNews,
         getValidation,
         getResources,
+        getTypes,
         getTerms,
-        getResourceTypes,
-        getSuggestions,
-        getChoices,
         getRanges,
         getCountries,
-        getRegions,
-        getKeywordHierarchy
+        getRegions
     };
 };
 

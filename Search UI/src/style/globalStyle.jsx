@@ -2,17 +2,19 @@
 
 import { css, Global } from '@emotion/react';
 
-const GlobalStyle = () => {
+const GlobalStyle = ({ standalone }) => {
     return (
         <Global
             styles={css`
                 body {
-                    background-color: #f8f7fa;
+                    ${standalone ? '' : 'background-color: #f8f7fa'};
                     color: #333;
-                    font-family: 'Inter', 'Helvetica Neue', sans-serif;
-                    font-size: 14px;
+                    font-family:
+                        ${standalone ? 'Archivo' : 'Inter'}, sans-serif;
+                    font-size: ${standalone ? '18px' : '14px'};
                     font-weight: 500;
                     margin: 0;
+                    ${standalone ? 'width: fit-content' : ''};
                 }
 
                 div {
@@ -115,7 +117,7 @@ const GlobalStyle = () => {
                             border-bottom: none;
                         }
 
-                        &:not(:first-of-type) {
+                        &:not(:first-child) {
                             border-top: none;
                             border-top-left-radius: 0;
                             border-top-right-radius: 0;
