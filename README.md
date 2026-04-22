@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/1199447800.svg)](https://doi.org/10.5281/zenodo.19691524)
+
 # SoilWise-he - SoilWiseFinder
 
 SoilWiseFinder provides the front-end and back-end components of the SoilWise catalogue discovery user interface. It consists of (1) a React/Javascript User interface, (2) an API that provides the NLP supported indexing of metadata into the Apache Lucene index and the querying of the index via the Solr search engine libraries and (3) the required configuration of the Solr search engine. 
