@@ -16,7 +16,7 @@ authors:
   affiliation: "Masaryk University"
   orcid: "https://orcid.org/0000-0002-0568-6211"
 title: "SoilWiseFinder"
-version: 1.0.0
+version: 2.0.0
 doi: 
 date-released: 2026-04-22
 repository-code: "https://github.com/soilwise-he/SoilWiseFinder"
