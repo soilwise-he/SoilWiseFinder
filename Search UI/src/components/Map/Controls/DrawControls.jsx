@@ -1,15 +1,15 @@
 import { useMap } from 'src/context/MapContext';
 import { ButtonMapControl } from './ButtonMapControl';
 import { interactionTypes } from 'src/services/settings';
-import { DrawSquare } from 'src/assets/icons.js';
+import { DrawFreeform, DrawSquare } from 'src/assets/icons.js';
 
-const DragControl = () => {
+const DrawControls = () => {
     const { interaction, setInteraction } = useMap();
-    const active = interaction === interactionTypes.drag;
 
-    return (
+    return [
         <ButtonMapControl
-            info={'Drag and drop bounding box'}
+            key={interactionTypes.drag}
+            info={interactionTypes.drag}
             onClick={() =>
                 setInteraction(previous =>
                     previous === interactionTypes.drag
@@ -17,10 +17,23 @@ const DragControl = () => {
                         : interactionTypes.drag
                 )
             }
-            active={active}
+            active={interaction === interactionTypes.drag}
             svg={DrawSquare}
+        />,
+        <ButtonMapControl
+            key={interactionTypes.draw}
+            info={interactionTypes.draw}
+            onClick={() =>
+                setInteraction(previous =>
+                    previous === interactionTypes.draw
+                        ? null
+                        : interactionTypes.draw
+                )
+            }
+            active={interaction === interactionTypes.draw}
+            svg={DrawFreeform}
         />
-    );
+    ];
 };
 
-export default DragControl;
+export default DrawControls;

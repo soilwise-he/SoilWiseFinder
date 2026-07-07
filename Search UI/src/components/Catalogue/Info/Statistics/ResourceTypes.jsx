@@ -7,7 +7,7 @@ const ResourceTypes = ({ data }) => {
         <ItemContainer>
             <ResponsivePie
                 data={data}
-                margin={{ top: 0, right: 63, bottom: 70, left: 55 }}
+                margin={{ top: 0, right: 75, bottom: 70, left: 55 }}
                 innerRadius={0.4}
                 startAngle={-90}
                 endAngle={270}
@@ -28,15 +28,22 @@ const ResourceTypes = ({ data }) => {
                 }}
                 enableArcLabels={false}
                 tooltip={item => (
-                    <span
+                    <div
                         style={{
                             whiteSpace: 'nowrap',
                             backgroundColor: 'white',
+                            fontSize: '14px',
+                            width: 'fit-content',
+                            textAlign: 'center',
                             padding: '5px'
                         }}
                     >
-                        {item.datum.id}: {item.datum.value} resources
-                    </span>
+                        <i>{item.datum.id}</i>
+                        <br />
+                        <b>
+                            <big>{item.datum.value}</big>
+                        </b>
+                    </div>
                 )}
             />
             <h2>Top 5 resource types</h2>

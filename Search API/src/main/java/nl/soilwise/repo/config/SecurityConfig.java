@@ -37,7 +37,7 @@ public class SecurityConfig {
                     .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                     .requestMatchers("/", "/search", "/index.html", "/logoWUR.png", "/schema.png", "/styles.css", "/favicon.ico").permitAll()
                     .requestMatchers("/swagger-ui/**", "/docs/**", "/swagger-ui.html", "/webjars/**").permitAll()
-                    .requestMatchers("/solr/search","/api/search").permitAll()
+                    .requestMatchers("/solr/search","/api/search", "/solr/query").permitAll()
                     .requestMatchers(HttpMethod.GET, "/**").permitAll()
                     .anyRequest().authenticated();
         });

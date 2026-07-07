@@ -34,41 +34,57 @@ const ResourcesContainer = styled.div`
 
 const Resources = () => {
     const [entries, setEntries] = useState(null);
-    const { getResources } = useGetData();
+    const { getResources, getResource, getKeywordDescription } = useGetData();
     const { updateFacets, setPagination, query, filters, sort } = store();
     const [selectedEntry, setSelectedEntry] = useState(null);
     const isMobile = useMediaQuery(() => muiTheme.breakpoints.down('sm'));
 
     useEffect(() => {
-        getResources(query, filters, sort)
-            .then(data => {
-                updateFacets(data.facets);
-                setPagination(previous => ({
-                    ...previous,
-                    numberOfItems: data.response.numFound
-                }));
-                setEntries(
-                    data.response.docs.map(document => {
-                        let highlightedFields =
-                            data.highlighting[document.identifier];
-
-                        return {
-                            ...document,
-                            title:
-                                highlightedFields.title?.[0] || document.title,
-                            abstract:
-                                highlightedFields.abstract?.[0] ||
-                                document.abstract
-                        };
-                    })
-                );
-                setSelectedEntry(null);
-            })
-            .catch(error => {
-                console.error(error);
-                setEntries([]);
-            });
+        getResources(query, filters, sort).then(data => {
+            updateFacets(data.facets);
+            setPagination(previous => ({
+                ...previous,
+                numberOfItems: data.response.numFound
+            }));
+            setEntries(data.response.docs);
+        });
     }, [getResources, query, filters, sort]);
+
+    useEffect(() => {
+        if (!selectedEntry) return;
+
+        if (!selectedEntry.similarResources) {
+            getResource(selectedEntry).then(resource =>
+                setSelectedEntry(resource)
+            );
+        }
+    }, [selectedEntry]);
+
+    useEffect(() => {
+        if (!selectedEntry) return;
+
+        if (
+            selectedEntry?.similarResources &&
+            selectedEntry?.matched_subjects &&
+            Array.isArray(selectedEntry.matched_subjects)
+        ) {
+            Promise.all(
+                selectedEntry.matched_subjects.map(keyword =>
+                    getKeywordDescription(keyword)
+                )
+            ).then(descriptions => {
+                setSelectedEntry(previous => ({
+                    ...previous,
+                    matched_subjects: Object.fromEntries(
+                        descriptions.map((description, index) => [
+                            previous.matched_subjects[index],
+                            description
+                        ])
+                    )
+                }));
+            });
+        }
+    }, [selectedEntry?.similarResources]);
 
     if (!entries) return <div>Searching...</div>;
 

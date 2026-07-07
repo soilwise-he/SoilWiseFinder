@@ -57,7 +57,7 @@ const RecentEntry = ({ item }) => {
             target="_blank"
         >
             <h2>RECENT ENTRY</h2>
-            <i>{getDate(item.date)}</i>
+            <i>{getDate(item.date || item.date_harvest)}</i>
             <h1>{item.title}</h1>
             {item.type && <p>{item.type}</p>}
         </ItemContainer>

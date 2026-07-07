@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import SelectList from 'components/UIElements/SelectList';
 import { store } from 'src/context/store';
 import useGetData from 'src/services/getData';
-import { nestedTerms, thematicFilterKeys } from '../../../../services/settings';
+import { thematicFilterKeys } from 'src/services/settings';
 import SwitchControl from 'components/UIElements/SwitchControl';
 import NestedSelectList from 'components/UIElements/NestedSelectList';
 
@@ -39,15 +39,13 @@ const TermsContainer = styled(OptionsContainer)`
     flex-direction: row;
     flex: 0 1 calc(85% - var(--mui-spacing-0));
 `;
-const NestedTermsContainer = styled(OptionsContainer)`
-    flex: 0 1 100%;
-`;
 
 const ThematicFilters = () => {
     const { updateChoiceFilter, updateTermFilter } = store();
     const [choices, setChoices] = useState([]);
     const [terms, setTerms] = useState([]);
-    const { getTerms, getChoices } = useGetData();
+    const [nestedTerms, setNestedTerms] = useState([]);
+    const { getTerms, getNestedTerms, getChoices } = useGetData();
 
     const getChoiceChangeHandler = key => event => {
         updateChoiceFilter(key, event.target.checked);
@@ -62,17 +60,11 @@ const ThematicFilters = () => {
 
     useEffect(() => {
         setChoices(getChoices());
-        getTerms().then(async items => {
-            let processedItems = [];
-
-            for (let item of items) {
-                let processedItem = await item;
-                processedItems.push(processedItem);
-            }
-
-            setTerms(processedItems);
-        });
-    }, [getChoices, getTerms]);
+        setTerms(
+            getTerms().filter(item => thematicFilterKeys.includes(item.key))
+        );
+        setNestedTerms(getNestedTerms());
+    }, [getChoices, getTerms, getNestedTerms]);
 
     return (
         <FilterOptions>
@@ -98,45 +90,31 @@ const ThematicFilters = () => {
                             ))}
                     </ChoicesContainer>,
                     <TermsContainer key="terms">
-                        {terms
-                            .filter(
-                                item =>
-                                    thematicFilterKeys.includes(item.key) &&
-                                    !nestedTerms.includes(item.key)
-                            )
-                            .map(item => (
-                                <SelectList
-                                    key={'search-' + item.key}
-                                    label={item.label}
-                                    options={item.options}
-                                    multiple={true}
-                                    values={item.selected}
-                                    onChange={getTermChangeHandler(item.key)}
-                                    fullWidth
-                                    helperText={item.description}
-                                />
-                            ))}
-                    </TermsContainer>,
-                    <NestedTermsContainer key="nested_terms">
-                        {terms
-                            .filter(
-                                item =>
-                                    thematicFilterKeys.includes(item.key) &&
-                                    nestedTerms.includes(item.key)
-                            )
-                            .map(item => (
-                                <NestedSelectList
-                                    key={'search-' + item.key}
-                                    label={item.label}
-                                    options={item.options}
-                                    multiple={true}
-                                    values={item.selected}
-                                    onChange={getTermChangeHandler(item.key)}
-                                    fullWidth
-                                    helperText={item.description}
-                                />
-                            ))}
-                    </NestedTermsContainer>
+                        {terms.map(item => (
+                            <SelectList
+                                key={'search-' + item.key}
+                                label={item.label}
+                                options={item.options}
+                                multiple={true}
+                                values={item.selected}
+                                onChange={getTermChangeHandler(item.key)}
+                                fullWidth
+                                helperText={item.description}
+                            />
+                        ))}
+                        {nestedTerms.map(item => (
+                            <NestedSelectList
+                                key={'search-' + item.key}
+                                label={item.label}
+                                options={item.options}
+                                optionsHierarchy={item.optionsHierarchy}
+                                values={item.selected}
+                                onChange={getTermChangeHandler(item.key)}
+                                fullWidth
+                                helperText={item.description}
+                            />
+                        ))}
+                    </TermsContainer>
                 ]
             )}
         </FilterOptions>

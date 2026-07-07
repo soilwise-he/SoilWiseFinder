@@ -18,6 +18,7 @@ public class SolrMetaDataRecord {
     private List<LinkElement> links;
 
     private Boolean soilMission;
+    private Boolean europeanFunded;
     private String license;
     private String language;
 
@@ -103,6 +104,14 @@ public class SolrMetaDataRecord {
 
     public void setSoilMission(Boolean soilMission) {
         this.soilMission = soilMission;
+    }
+
+    public Boolean getEuropeanFunded() {
+        return europeanFunded;
+    }
+
+    public void setEuropeanFunded(Boolean europeanFunded) {
+        this.europeanFunded = europeanFunded;
     }
 
     public String getLicense() {

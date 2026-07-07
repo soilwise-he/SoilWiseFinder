@@ -1,71 +1,191 @@
-import { useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
+import { useEffect, useState, useCallback } from 'react';
 import styled from '@emotion/styled';
-import FormControl from '@mui/material/FormControl';
-import { Autocomplete, TextField } from '@mui/material';
+import { Button, Checkbox, FormControlLabel } from '@mui/material';
+import { KeyboardArrowDown, KeyboardArrowUp } from '@mui/icons-material';
 
-import ToolTip from './ToolTip';
-import useGetData from 'src/services/getData';
+import OptionSuggestions from 'components/UIElements/OptionSuggestions';
+import DraggablePanel from 'components/UIContainers/DraggablePanel';
 
-const StyledMuiAutocomplete = styled(Autocomplete)`
-    .MuiInputBase-root {
-        padding-left: var(--mui-spacing-0);
-        font-size: 0.9rem;
-    }
+const MainContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+`;
 
-    .MuiFormControl-root {
-        border-radius: 100px;
-    }
+const StyledButton = styled(Button)`
+    padding: calc(var(--mui-spacing-0) + 1.8px) var(--mui-spacing-1);
+`;
 
-    .MuiChip-root {
-        left: 0.5em;
-    }
+const TitleBar = styled.p`
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--mui-spacing-0);
+    align-content: center;
+    margin: 0px;
+    border: 1px solid #fff;
+    border-radius: var(--mui-shape-borderRadius-0);
 
-    svg {
-        right: 0.5em;
+    &.selected {
+        border: 1px solid var(--mui-palette-primary-main);
     }
 `;
+
+const ContentContainer = styled.div`
+    display: flex;
+    flex-direction: column;
+    margin-left: calc(var(--mui-spacing-0) * ${props => props.level});
+`;
+
+const TermContainer = styled(FormControlLabel)`
+    margin-left: 0px;
+
+    .MuiCheckbox-root {
+        padding: 2px;
+        margin-right: var(--mui-spacing-0);
+    }
+
+    .MuiFormControlLabel-label {
+        font-size: 14px;
+        font-weight: 500;
+    }
+`;
+
+const Panel = ({ title, level, startOpen = false, children }) => {
+    const [open, setOpen] = useState(false);
+
+    useEffect(() => {
+        setOpen(startOpen);
+    }, [startOpen]);
+
+    return (
+        <MainContainer>
+            <TitleBar
+                onClick={() => setOpen(previous => !previous)}
+                className={startOpen ? 'selected' : ''}
+            >
+                {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
+                {title}
+            </TitleBar>
+            {open && (
+                <ContentContainer level={level}>{children}</ContentContainer>
+            )}
+        </MainContainer>
+    );
+};
 
 const NestedSelectList = ({
     label,
     values,
     options,
+    optionsHierarchy,
     onChange,
-    multiple,
-    helperText,
-    ...props
+    helperText
 }) => {
+    const [open, setOpen] = useState(false);
     const [nestedOptions, setNestedOptions] = useState(null);
+
+    const handleChange = event => {
+        onChange([
+            ...values,
+            ...options.filter(option => option.value === event.target.name)
+        ]);
+    };
+
+    const handleSelect = newValue => {
+        onChange([
+            ...values,
+            ...options.filter(option => option.value === newValue)
+        ]);
+    };
 
     const hasSiblings = option => {
         return Object.keys(option).length > 0;
     };
 
-    const translateOptions = items => {
-        console.log(Object.keys(items));
-        return Object.entries(items).map(([key, value]) => {
-            if (hasSiblings(value)) {
-                return (
-                    <div style={{ border: '1px solid grey' }}>
-                        <p>{key}</p>
-                        <div style={{ display: 'flex' }}>
-                            {translateOptions(value)}
-                        </div>
-                    </div>
-                );
-            } else {
-                return <h2>{key}</h2>;
-            }
-        });
-    };
+    const translateOptions = useCallback(
+        (items, level, selectedCategories) => {
+            return Object.entries(items).map(([key, value]) => {
+                if (hasSiblings(value)) {
+                    return (
+                        <Panel
+                            key={key}
+                            title={key}
+                            level={level}
+                            startOpen={selectedCategories.has(key)}
+                        >
+                            {translateOptions(
+                                value,
+                                level + 1,
+                                selectedCategories
+                            )}
+                        </Panel>
+                    );
+                } else {
+                    return (
+                        <TermContainer
+                            key={key}
+                            label={key}
+                            control={
+                                <Checkbox
+                                    name={key}
+                                    checked={
+                                        values.filter(
+                                            option => option.value === key
+                                        ).length > 0
+                                    }
+                                    onChange={handleChange}
+                                    size="small"
+                                />
+                            }
+                        />
+                    );
+                }
+            });
+        },
+        [values]
+    );
 
     useEffect(() => {
-        if (!options) return;
+        if (!optionsHierarchy) return;
 
-        setNestedOptions(translateOptions(options));
-    }, [options]);
+        setNestedOptions(
+            translateOptions(
+                optionsHierarchy.nested,
+                1,
+                new Set(
+                    values
+                        .map(item => optionsHierarchy.flattened[item.value])
+                        .flat()
+                )
+            )
+        );
+    }, [optionsHierarchy, values, translateOptions]);
 
-    return nestedOptions;
+    return (
+        <MainContainer>
+            <StyledButton
+                variant="outlined"
+                onClick={() => setOpen(previous => !previous)}
+            >
+                {label} {values.length > 0 ? `(${values.length} selected)` : ''}
+            </StyledButton>
+            {open && (
+                <DraggablePanel
+                    title={label}
+                    defaultPosition={{ top: 200, right: 5 }}
+                    handleClose={() => setOpen(false)}
+                >
+                    <OptionSuggestions
+                        label={'keyword'}
+                        options={Object.keys(optionsHierarchy.flattened)}
+                        onSelect={handleSelect}
+                        onClear={() => onChange([])}
+                    />
+                    {nestedOptions}
+                </DraggablePanel>
+            )}
+        </MainContainer>
+    );
 };
 
 export default NestedSelectList;

@@ -9,36 +9,30 @@ import SelectChip from 'components/UIElements/SelectChip';
 import RadioControl from 'components/UIElements/RadioControl';
 import { store } from 'src/context/store';
 import { getExtent } from 'src/services/util';
-import { typeOfAreas } from 'src/services/settings';
+import { typeOfSpatialFilters } from 'src/services/settings';
 import SearchMapContent from 'src/components/Map/MapContent/SearchMapContent';
 import { IsWithinIcon, OverlapsIcon } from 'assets/icons';
 
 const SpatialContainer = styled.div`
     display: flex;
-    flex-direction: column;
     gap: 20px;
 
     width: 100%;
-    height: 600px;
+    height: 500px;
 `;
 
 const FilterOptions = styled.div`
     display: flex;
     gap: 20px 40px;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    align-items: center;
+    justify-content: flex-start;
+    flex-direction: column;
 `;
 
 const SelectLists = styled.div`
     display: flex;
     gap: 20px;
-    justify-content: space-between;
-    flex: 0 1 60%;
-
-    .MuiFormControl-root {
-        flex: 1 1 50%;
-    }
+    flex-direction: column;
+    flex: 1 1 100%;
 `;
 
 const RadioLabel = styled.div`
@@ -49,14 +43,14 @@ const RadioLabel = styled.div`
 `;
 
 const SpatialFilter = () => {
-    const { setSpatialFilter, area } = store();
+    const { setSpatialFilter, area, filters } = store();
     const [countries, setCountries] = useState(null);
     const [regions, setRegions] = useState(null);
     const [selected, setSelected] = useState({
         country: [],
         region: [],
         feature: null,
-        typeOfArea: typeOfAreas.overlap
+        typeOfFilter: typeOfSpatialFilters.overlap
     });
     const { getCountries, getRegions } = useGetData();
 
@@ -76,15 +70,15 @@ const SpatialFilter = () => {
         if (selected.feature?.geoJsonFeature) {
             setSpatialFilter(
                 getExtent(selected.feature.geoJsonFeature.geometry.coordinates),
-                selected.typeOfArea
+                selected.typeOfFilter
             );
         } else if (selected.feature?.olFeature) {
             setSpatialFilter(
-                selected.feature.olFeature.getGeometry().getExtent(),
-                selected.typeOfArea
+                selected.feature.olFeature.getGeometry(),
+                selected.typeOfFilter
             );
         }
-    }, [selected.feature, selected.typeOfArea]);
+    }, [selected.feature, selected.typeOfFilter]);
 
     useEffect(() => {
         let feature = null;
@@ -104,6 +98,15 @@ const SpatialFilter = () => {
             feature: feature
         }));
     }, [area]);
+
+    useEffect(() => {
+        if (!filters.spatial) return;
+
+        setSelected(previous => ({
+            ...previous,
+            typeOfFilter: filters.spatial.typeOfFilter
+        }));
+    }, [filters.spatial]);
 
     const getChangeHandler = key => value => {
         if (key === 'country') {
@@ -143,10 +146,10 @@ const SpatialFilter = () => {
                     }
                 }
             }));
-        } else if (key === 'typeOfArea') {
+        } else if (key === 'typeOfFilter') {
             setSelected(previous => ({
                 ...previous,
-                typeOfArea: value
+                typeOfFilter: value
             }));
         }
     };
@@ -158,17 +161,20 @@ const SpatialFilter = () => {
                     <RadioControl
                         labels={[
                             <RadioLabel>
-                                <div>{typeOfAreas.overlap}</div>
+                                <div>{typeOfSpatialFilters.overlap}</div>
                                 <OverlapsIcon />
                             </RadioLabel>,
                             <RadioLabel>
-                                <div>{typeOfAreas.within}</div>
+                                <div>{typeOfSpatialFilters.within}</div>
                                 <IsWithinIcon />
                             </RadioLabel>
                         ]}
-                        options={[typeOfAreas.overlap, typeOfAreas.within]}
-                        value={selected.typeOfArea}
-                        handleChange={getChangeHandler('typeOfArea')}
+                        options={[
+                            typeOfSpatialFilters.overlap,
+                            typeOfSpatialFilters.within
+                        ]}
+                        value={selected.typeOfFilter}
+                        handleChange={getChangeHandler('typeOfFilter')}
                     />
                     <SelectLists>
                         <SelectChip
@@ -179,6 +185,7 @@ const SpatialFilter = () => {
                             values={selected.country}
                             onChange={getChangeHandler('country')}
                             fontSize="18px"
+                            fullWidth
                         />
                         <SelectChip
                             key={'regions'}
@@ -189,6 +196,7 @@ const SpatialFilter = () => {
                             onChange={getChangeHandler('region')}
                             fontSize="18px"
                             disabled={!regions?.length}
+                            fullWidth
                         />
                     </SelectLists>
                 </FilterOptions>

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import nl.soilwise.repo.controller.SolrQueryRequest;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,15 +31,15 @@ public class ServiceSolr {
     }
 
     public String searchSolrJson(JsonNode solrJsonParams) throws JsonProcessingException {
-        JsonNode reponse = doSolrSelect(solrJsonParams);
+        JsonNode reponse = doSolrSelect(solrJsonParams, "select");
 
         return objectMapper.writeValueAsString(reponse);
     }
 
-    public @Nullable JsonNode doSolrSelect(JsonNode solrJsonParams) {
+    public @Nullable JsonNode doSolrSelect(JsonNode solrJsonParams, String method) {
         String url = UriComponentsBuilder
                 .fromUriString(solrUrl)
-                .pathSegment(active_core, "select")
+                .pathSegment(active_core, method)
                 .toUriString();
 
         HttpHeaders headers = new HttpHeaders();
@@ -49,4 +50,15 @@ public class ServiceSolr {
         return reponse;
     }
 
+    public String querySolrUrl(SolrQueryRequest input) {
+        UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder
+                .fromUriString(solrUrl)
+                .pathSegment(active_core, input.getMethod());
+        for(var params : input.getParameters().entrySet()) {
+            uriComponentsBuilder.queryParam(params.getKey(), params.getValue());
+        }
+        String url = uriComponentsBuilder.toUriString();
+
+        return solrRestTemplate.getForObject(url, String.class);
+    }
 }

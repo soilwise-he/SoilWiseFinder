@@ -1,11 +1,12 @@
-# SoilWise Repo Application
+# SoilWise Repo Application 
+
 
 Providing the data in the database
 
 ## Test 
-- ppostgres12_si.cdbe.wurnet.nl:5432/test_soilwise?currentSchema=harvest
+- tpostgreswenr1.cdbe.wurnet.nl
 - https://repo.soilwise-he-test.containers.wurnet.nl
-- https://repo.soilwise-he-test.containers.wurnet.nl/swagger-ui/index.html
+- https://soilwise-he-test.containers.wur.nl/search-api/swagger-ui/index.html
 
 ## Production 
 - ppostgres12_si.cdbe.wurnet.nl:5432/prod_soilwise?currentSchema=harvest

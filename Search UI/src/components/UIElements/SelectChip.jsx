@@ -1,22 +1,8 @@
-import PropTypes from 'prop-types';
-import styled from '@emotion/styled';
 import FormControl from '@mui/material/FormControl';
 import Chip from '@mui/material/Chip';
-import { Autocomplete, TextField } from '@mui/material';
+import { Autocomplete } from '@mui/material';
 
-const StyledMuiAutocomplete = styled(Autocomplete)`
-    .MuiFormControl-root {
-        border-radius: 100px;
-    }
-
-    .MuiChip-root {
-        left: 0.5em;
-    }
-
-    svg {
-        right: 0.5em;
-    }
-`;
+import TextField from './TextField';
 
 const SelectChip = ({
     label,
@@ -46,12 +32,11 @@ const SelectChip = ({
             variant="outlined"
             {...props}
         >
-            <StyledMuiAutocomplete
+            <Autocomplete
                 multiple={multiple}
                 value={values}
                 options={options}
                 getOptionLabel={option => option.value || ''}
-                freeSolo
                 filterSelectedOptions
                 renderValue={(value, getItemProps) =>
                     value.length > 0
@@ -74,7 +59,7 @@ const SelectChip = ({
                 }
                 renderInput={params => (
                     <TextField
-                        {...params}
+                        params={params}
                         label={label}
                         helperText={helperText}
                     />
@@ -84,26 +69,6 @@ const SelectChip = ({
             />
         </FormControl>
     );
-};
-
-const valueType = PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.number,
-    PropTypes.object
-]);
-
-SelectChip.propTypes = {
-    label: PropTypes.node,
-    values: PropTypes.arrayOf(valueType),
-    onChange: PropTypes.func,
-    options: PropTypes.arrayOf(
-        PropTypes.shape({
-            value: valueType.isRequired,
-            disabled: PropTypes.bool
-        })
-    ),
-    multiple: PropTypes.bool,
-    helperText: PropTypes.string
 };
 
 export default SelectChip;

@@ -25,6 +25,7 @@ export const ItemContainer = styled.div`
     flex-direction: column;
     justify-content: space-between;
     flex-basis: 25%;
+    min-width: 220px;
 
     h2 {
         text-align: center;

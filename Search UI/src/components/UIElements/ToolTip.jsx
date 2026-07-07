@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import PropTypes from 'prop-types';
 import dynamic from 'next/dynamic';
 
 const Tooltip = dynamic(() => import('@mui/material/Tooltip'), { ssr: false });
@@ -32,10 +31,6 @@ const ToolTip = ({ title, children, ...props }) => {
             {children}
         </Tooltip>
     );
-};
-
-ToolTip.propTypes = {
-    title: PropTypes.string
 };
 
 export default ToolTip;

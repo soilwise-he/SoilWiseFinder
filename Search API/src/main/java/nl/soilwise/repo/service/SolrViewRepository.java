@@ -94,6 +94,7 @@ public class SolrViewRepository {
         }
         
         result.addField("soilmission", solrMetaDataRecord.getSoilMission());
+        result.addField("european_funded", solrMetaDataRecord.getEuropeanFunded());
         result.addField("license", solrMetaDataRecord.getLicense());
         result.addField("language", solrMetaDataRecord.getLanguage());
 
@@ -168,6 +169,7 @@ public class SolrViewRepository {
             }
 
             solrMetaDataRecord.setSoilMission(rs.getObject("soilmission") == null ? null : rs.getBoolean("soilmission"));
+            solrMetaDataRecord.setEuropeanFunded(rs.getObject("european_funded") == null ? null : rs.getBoolean("european_funded"));
             solrMetaDataRecord.setLicense(rs.getString("license"));
             solrMetaDataRecord.setLanguage(rs.getString("language"));
 
@@ -265,4 +267,7 @@ public class SolrViewRepository {
     }
 
 
+    public void rematerializeView() {
+        jdbcTemplate.execute("REFRESH MATERIALIZED VIEW metadata.mv_records");
+    }
 }

@@ -15,6 +15,7 @@
     <field name="organizations" type="text_name" indexed="true" stored="true" multiValued="true"/>
     <field name="view_authors" type="string" indexed="true" stored="true" multiValued="true"/>
     <field name="soilmission" type="boolean" indexed="true" stored="true" multiValued="false"/>
+    <field name="european_funded" type="boolean" indexed="true" stored="true" multiValued="false"/>
     <field name="license" type="string" indexed="true" stored="true" multiValued="false"/>
     <field name="_version_" type="plong" indexed="false" stored="false"/>
 
@@ -40,8 +41,6 @@
     <field name="temporal_end" type="pdate" indexed="true" stored="true" multiValued="false"/>
     <field name="temporal_range" type="date_range" indexed="true" stored="true" multiValued="true"/>
     <field name="date_harvest" type="pdate" indexed="true" stored="true" multiValued="false"/>
-
-
     
     <!-- Spatial and Geometry Fields -->
     <field name="spatial" type="location_rpt" indexed="true" stored="true"/>
@@ -49,11 +48,13 @@
     <!-- All free-text searchable fields should be copied in here -->
 
     <field name="text_all" type="text_general" indexed="true" stored="false" multiValued="true"/>
-
     <copyField source="title" dest="text_all"/>
     <copyField source="abstract" dest="text_all"/>
     <copyField source="view_authors" dest="text_all"/>
     
+    <field name="authors_suggest" type="text_general" indexed="true" stored="true" multiValued="true"/>
+    <copyField source="view_authors" dest="authors_suggest"/>
+
     <!-- FieldTypes -->
 
     <fieldType name="text_name" class="solr.TextField" positionIncrementGap="100">

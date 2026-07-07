@@ -153,7 +153,7 @@ public class ServiceSearch {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode objectNode = objectMapper.createObjectNode();
         objectNode.put("query", "identifier:" + identifier);
-        JsonNode jsonNode = serviceSolr.doSolrSelect(objectNode);
+        JsonNode jsonNode = serviceSolr.doSolrSelect(objectNode, "select");
         return jsonNode != null ? jsonNode.findValue("docs") : null;
     }
 
@@ -166,7 +166,7 @@ public class ServiceSearch {
         ObjectNode facet = root.putObject("facet");
         ObjectNode recordTypes = facet.putObject(RECORD_TYPES_FACET);
         recordTypes.put("type", "terms").put("field", "type");
-        JsonNode result = serviceSolr.doSolrSelect(root);
+        JsonNode result = serviceSolr.doSolrSelect(root, "select");
 
 
         return facetQueryToDomainResult(result);

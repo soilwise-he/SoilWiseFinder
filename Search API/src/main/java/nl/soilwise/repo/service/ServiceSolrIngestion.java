@@ -37,8 +37,8 @@ public class ServiceSolrIngestion {
     }
 
     public void doFullReindex(boolean mockup) {
-        log.info("in do full reindex");
-        ensureCoresExistAndShadowIsEmpty();
+        log.info("start reindex, mockup: {}", mockup);
+        checkCoresExistAndEnsureShadowIsEmpty();
         log.info("core created");
         fillCoreWithMetaData(collection_shadow, mockup);
         log.info("core filled with metadata");
@@ -71,8 +71,8 @@ public class ServiceSolrIngestion {
                     .build()) {
                 Iterator<SolrInputDocument> docs = list.stream().iterator();
                 UpdateResponse add = solrClient.add(coreName, docs);
-                solrClient.commit(coreName);
-            } catch (IOException | SolrServerException e) {
+            UpdateResponse commit = solrClient.commit(coreName);
+        } catch (IOException | SolrServerException e) {
                 log.error("Error while filling {} with data.", coreName, e);
                 throw new RuntimeException(e);
             }
@@ -80,12 +80,12 @@ public class ServiceSolrIngestion {
 
     }
 
-    private void ensureCoresExistAndShadowIsEmpty() {
+    private void checkCoresExistAndEnsureShadowIsEmpty() {
         try (SolrClient solrClient = new Http2SolrClient.Builder(solrUrl)
                 .withBasicAuthCredentials(solrUser, solrPassword)
                 .build()) {
-            boolean activeExists = ensureCoreExists(solrClient, collection_active);
-            boolean shadowExists = ensureCoreExists(solrClient, collection_shadow);
+            boolean activeExists = checkCoreExists(solrClient, collection_active);
+            boolean shadowExists = checkCoreExists(solrClient, collection_shadow);
             boolean shadowEmpty = ensureCoreEmpty(solrClient, collection_shadow);
             if(activeExists && shadowExists && shadowEmpty){
                 log.info("cores successfully initialsed, shadow is empty, ready for reindexing");
@@ -103,15 +103,17 @@ public class ServiceSolrIngestion {
     private boolean ensureCoreEmpty(SolrClient solrClient, String coreName) throws SolrServerException, IOException {
         UpdateResponse updateResponse = solrClient.deleteByQuery(coreName, "*:*");
         UpdateResponse commit = solrClient.commit(coreName,true, true);
-        return getResultsInCoreCount(solrClient, coreName) == 0;
+        boolean success = getResultsInCoreCount(solrClient, coreName) == 0;
+        if(!success){
+            log.error("core {} is not empty", coreName);
+            log.error("delete response: {}", updateResponse);
+            log.error("commit response: {}", commit);
+        }
+        return success;
     }
 
-    private static boolean ensureCoreExists(SolrClient solrClient, String coreName) throws SolrServerException, IOException {
-        boolean coreExists = coreExists(solrClient, coreName);
-        if (!coreExists) {
-            return createCore(solrClient, coreName);
-        }
-        return true;
+    private static boolean checkCoreExists(SolrClient solrClient, String coreName) throws SolrServerException, IOException {
+        return coreExists(solrClient, coreName);
     }
 
     private static long getResultsInCoreCount(SolrClient solrClient, String coreName) throws SolrServerException, IOException {
@@ -125,6 +127,7 @@ public class ServiceSolrIngestion {
         try {
             CoreAdminRequest.Create createCoreRequest = new CoreAdminRequest.Create();
             createCoreRequest.setCoreName(coreName);
+            createCoreRequest.setDataDir("/app/indexes/"+coreName);
             createCoreRequest.setConfigSet("metadata");
             CoreAdminResponse process = createCoreRequest.process(solrClient);
             return process.getStatus() == 0;
@@ -142,4 +145,8 @@ public class ServiceSolrIngestion {
         }
     }
 
+    public void rematerializeView() {
+        solrViewRepository.rematerializeView();
+
+    }
 }

@@ -9,7 +9,7 @@ import {
 
 import muiTheme from 'src/style/theme';
 import { Resource } from 'components/Catalogue/Resource';
-import { paths } from 'src/services/settings';
+import { getDetailsPageUrl, paths } from 'src/services/settings';
 import ToolTip from 'components/UIElements/ToolTip';
 
 const StickyResourceContainer = styled.div`
@@ -65,6 +65,8 @@ const ButtonContainer = styled.div`
 `;
 
 const ResourceSelection = ({ selectedEntry, setSelectedEntry }) => {
+    if (!selectedEntry) return;
+
     const isMobile = useMediaQuery(() => muiTheme.breakpoints.down('sm'));
     const handleShare = () => {
         navigator.clipboard.writeText(
@@ -86,7 +88,7 @@ const ResourceSelection = ({ selectedEntry, setSelectedEntry }) => {
             </ToolTip>
             <ToolTip title="Open resource details in a new tab">
                 <Button
-                    href={`${paths.catalogueResource}/${encodeURIComponent(selectedEntry?.identifier)}`}
+                    href={getDetailsPageUrl(selectedEntry?.identifier, true)}
                     target="_blank"
                     onClick={() => setSelectedEntry(null)}
                 >
@@ -101,17 +103,9 @@ const ResourceSelection = ({ selectedEntry, setSelectedEntry }) => {
     ];
 
     if (isMobile) {
-        return (
-            selectedEntry && (
-                <InlineResourceContainer>{content}</InlineResourceContainer>
-            )
-        );
+        return <InlineResourceContainer>{content}</InlineResourceContainer>;
     } else {
-        return (
-            selectedEntry && (
-                <StickyResourceContainer>{content}</StickyResourceContainer>
-            )
-        );
+        return <StickyResourceContainer>{content}</StickyResourceContainer>;
     }
 };
 

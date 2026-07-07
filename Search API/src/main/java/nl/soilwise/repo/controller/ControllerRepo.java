@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import nl.soilwise.repo.domain.SearchInput;
 import nl.soilwise.repo.domain.SoilwiseSolrDomainResult;
 import nl.soilwise.repo.service.ServiceSearch;
@@ -126,30 +127,65 @@ public class ControllerRepo {
     }
 
     @Operation(summary = "API detail", tags = API_TAG, description = "Returns the details for the record with the given identifier")
-    @GetMapping(path = "/api/detail" )
+    @GetMapping(path = "/api/detail")
     public ResponseEntity<JsonNode> apiDetail(@RequestParam("identifier") String identifier) throws JsonProcessingException {
         String escapedIdentifier = ClientUtils.escapeQueryChars(identifier);
-        log.info(identifier+" => "+escapedIdentifier);
+        log.info(identifier + " => " + escapedIdentifier);
         JsonNode docsNode = serviceSearch.detail(escapedIdentifier);
         //SOLR uses identifier as unique key, it will always return 1 or zero results
         if (docsNode != null && !docsNode.isEmpty() && docsNode.isArray() && docsNode.size() > 0) {
             JsonNode firstResult = docsNode.get(0);
             return ResponseEntity.ok(firstResult);
-        }
-        else
+        } else
             return ResponseEntity.noContent().build();
     }
 
     @Operation(summary = "Get domain", tags = API_TAG, description = "returns the domain tables")
     @GetMapping(path = "/api/domain", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<SoilwiseSolrDomainResult> apiDomain(){
-        try{
+    public ResponseEntity<SoilwiseSolrDomainResult> apiDomain() {
+        try {
             return ResponseEntity.ok(serviceSearch.getDomain());
-        } catch (Exception e){
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().body(null);
         }
     }
 
+
+    @Operation(summary = "'raw' solr query", description = "allows for terms&suggestions", tags = SOLR_TAG,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = Object.class),
+                            examples = {
+                                    @ExampleObject(name = "Sample terms",
+                                            value = """
+                                                    {
+                                                    "method":"terms",
+                                                    "terms.fl":"subjects",
+                                                    "terms.limit":10,
+                                                    "terms.sort":"count",
+                                                    "terms.regex":".*ph.*",
+                                                    "omitHeader":true
+                                                    }
+                                                    """),
+                                    @ExampleObject(name = "Sample suggest",
+                                            value = """
+                                                    {
+                                                      "method":"suggest",
+                                                      "suggest.q": "katj",
+                                                      "omitHeader":true
+                                                    }
+                                                    """)
+
+                            }
+                    ))
+    )
+    @PostMapping(path = "/solr/query", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public String solrQuery(@Valid @RequestBody SolrQueryRequest input) throws JsonProcessingException {
+        String queryResponse = serviceSolr.querySolrUrl(input);
+        return queryResponse;
+    }
 
     @Operation(summary = "'raw' solr search", description = "allows for finetuned queries", tags = SOLR_TAG,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,

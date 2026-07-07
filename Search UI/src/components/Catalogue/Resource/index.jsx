@@ -1,184 +1,287 @@
+import { Close, Compare } from '@mui/icons-material';
+import ToolTip from 'components/UIElements/ToolTip';
+
 import HTMLMap from 'src/components/Map/HTMLMap';
+import {
+    fieldDefinitions,
+    tagDefinitions,
+    mapParameters,
+    paths,
+    getDetailsPageUrl
+} from 'src/services/settings';
 import { getDate } from 'src/services/util';
 
-const getKeywordChips = keywords => {
-    let uniqueKeywords = keywords.reduce((uniqueKeywords, currentKeyword) => {
-        let keyword = currentKeyword.toLowerCase();
+const getElementTitle = field => {
+    return (
+        <ToolTip title={fieldDefinitions[field].description}>
+            {fieldDefinitions[field].label}
+        </ToolTip>
+    );
+};
 
-        if (keyword in uniqueKeywords) {
-            uniqueKeywords[keyword] += 1;
-        } else {
-            uniqueKeywords[keyword] = 1;
-        }
+const getKeywordChips = (originalKeywords, matchedKeywords) => {
+    let uniqueKeywords = originalKeywords.reduce(
+        (uniqueKeywords, currentKeyword) => {
+            uniqueKeywords[currentKeyword] = 'original';
 
-        return uniqueKeywords;
-    }, {});
+            return uniqueKeywords;
+        },
+        {}
+    );
+
+    if (matchedKeywords) {
+        uniqueKeywords = Object.keys(matchedKeywords).reduce(
+            (uniqueKeywords, currentKeyword) => {
+                if (currentKeyword in uniqueKeywords) {
+                    uniqueKeywords[currentKeyword] = 'original_and_matched';
+                } else {
+                    uniqueKeywords[currentKeyword] = 'matched';
+                }
+
+                return uniqueKeywords;
+            },
+            uniqueKeywords
+        );
+    }
 
     return (
-        <div id="keyword-list">
+        <div
+            key="keyword-list"
+            id="keyword-list"
+        >
             {Object.entries(uniqueKeywords)
                 .sort((a, b) => {
-                    if (a[1] === b[1]) {
-                        return a[0] > b[0] ? 1 : -1;
+                    if (a[1] === 'matched' && b[1] !== 'matched') {
+                        return -1;
+                    } else if (a[1] !== 'matched' && b[1] === 'matched') {
+                        return 1;
+                    } else if (
+                        a[1] === 'original_and_matched' &&
+                        b[1] === 'original'
+                    ) {
+                        return -1;
+                    } else if (
+                        a[1] === 'original' &&
+                        b[1] === 'original_and_matched'
+                    ) {
+                        return 1;
                     } else {
-                        return b[1] - a[1];
+                        return b[0] > a[0];
                     }
                 })
-                .map(([keyword, count]) => (
-                    <div
-                        key={keyword}
-                        className={`keyword${count > 1 ? ' multiple' : ''}`}
+                .map(([keyword, type]) => (
+                    <ToolTip
+                        key={keyword + '_' + type}
+                        title={
+                            matchedKeywords && keyword in matchedKeywords ? (
+                                <div>
+                                    <p>
+                                        This keyword is from the metadata and
+                                        matched with the Soil Vocabulary.
+                                    </p>
+                                    <p>{matchedKeywords[keyword]}</p>
+                                </div>
+                            ) : (
+                                'This keyword is from the metadata as is.'
+                            )
+                        }
                     >
-                        {keyword}
-                    </div>
+                        <div className={`keyword ${type}`}>{keyword}</div>
+                    </ToolTip>
                 ))}
         </div>
     );
 };
 
-const getAuthors = item => {
-    let authors = null;
+const getSingularAttributes = item => {
+    let attributes = [];
 
-    if (item.pdf_author) {
-        authors = item.pdf_author?.join(', ');
-    } else if (item.creator) {
-        authors = item.creator?.join(', ');
-    } else if (item.contributor) {
-        authors = item.contributor?.join(', ');
-    } else if (item.organization) {
-        authors = item.organization.join(', ');
-    }
+    ['type', 'license', 'language'].forEach(field => {
+        if (item[field]) {
+            let value = (
+                <span className={field in item.augments ? 'augmented' : ''}>
+                    {item[field]}
+                </span>
+            );
 
-    return authors ? (
-        <p id="authors">
-            <i>{authors}</i>
-        </p>
-    ) : null;
+            if (field in item.augments) {
+                value = (
+                    <ToolTip
+                        title={`This metadata value is augmented. The original value is '${item.augments[field].original}'.`}
+                        className="tag"
+                    >
+                        {value}
+                    </ToolTip>
+                );
+            }
+
+            attributes.push(
+                <p key={field}>
+                    <b>
+                        <ToolTip
+                            title={fieldDefinitions[field].description}
+                            key={field}
+                        >
+                            {fieldDefinitions[field].label + ': '}
+                        </ToolTip>
+                    </b>
+                    {value}
+                </p>
+            );
+        }
+    });
+
+    ['soilmission', 'european_funded'].forEach(field => {
+        if (item[field]) {
+            attributes.push(
+                <ToolTip
+                    title={fieldDefinitions[field].description}
+                    key={field}
+                >
+                    <p className="tag">{fieldDefinitions[field].label}</p>
+                </ToolTip>
+            );
+        }
+    });
+
+    ['spatial_description'].forEach(field => {
+        if (field in item.augments) {
+            attributes.push(
+                <p key={field}>
+                    <b>
+                        <ToolTip
+                            title={fieldDefinitions[field].description}
+                            key={field}
+                        >
+                            {fieldDefinitions[field].label + ': '}
+                        </ToolTip>
+                    </b>
+                    <ToolTip title={`This metadata value is augmented.`}>
+                        <span className={'augmented'}>
+                            {item.augments[field].target}
+                        </span>
+                    </ToolTip>
+                </p>
+            );
+        }
+    });
+
+    return attributes;
 };
 
-const getDateParagraph = (label, startDate, endDate) => {
+const getAugmentations = item => {
+    if (item.augments) {
+        let augmentations = [
+            <ToolTip
+                title="Compare augmented data with original data"
+                key="augmentations-toggle"
+            >
+                <a href="#augmentations-modal">
+                    <Compare />
+                </a>
+            </ToolTip>,
+            <div
+                id="augmentations-modal"
+                key="augmentations-modal"
+            >
+                <a
+                    className="modal_close"
+                    href="#"
+                >
+                    <Close />
+                </a>
+                <h2>Comparison between augmented and original metadata</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Metadata property</th>
+                            <th>Augmented value</th>
+                            <th>Original value</th>
+                            <th>Augmentation process</th>
+                            <th>Processed on</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {Object.entries(item.augments).map(
+                            ([property, augmentation]) => (
+                                <tr key={property}>
+                                    <td>{fieldDefinitions[property]?.label}</td>
+                                    <td className="value">
+                                        {item[property] || augmentation.target}
+                                    </td>
+                                    <td className="value">
+                                        {augmentation.original}
+                                    </td>
+                                    <td>
+                                        {augmentation.process.replaceAll(
+                                            '-',
+                                            ' '
+                                        )}
+                                    </td>
+                                    <td>{getDate(augmentation.date)}</td>
+                                </tr>
+                            )
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        ];
+
+        if ('completeness' in item.augments) {
+            let value = parseFloat(item.augments.completeness.target).toFixed(
+                0
+            );
+
+            augmentations.push(
+                <ToolTip
+                    key="completeness"
+                    title={`The metadata of this record is ${value}% complete.`}
+                >
+                    <div
+                        className={`completeness`}
+                        style={{
+                            background: `linear-gradient(to top, var(--mui-palette-custom-augmentationBorder) ${value}%, white ${value}%)`
+                        }}
+                    />
+                </ToolTip>
+            );
+        }
+
+        return <div className="augmentations">{augmentations}</div>;
+    }
+};
+
+const getDateParagraph = (field, startDate, endDate) => {
     return (
-        <p>
-            <b>{label}</b>
+        <p key={field}>
+            <ToolTip title={fieldDefinitions[field].description}>
+                <b>{fieldDefinitions[field].label}</b>
+            </ToolTip>
             {startDate && getDate(startDate)}
             {endDate && ' to ' + getDate(endDate)}
         </p>
     );
 };
 
-const getMap = item => {
+const getPersonsAndOrganizations = (label, items) => {
     return (
-        <HTMLMap
-            data={{
-                wktFeature: item.wkb_geometry,
-                crs: 'EPSG:4326'
-            }}
-        />
-    );
-};
-
-const getContact = item => {
-    return (
-        <li key={item.organization + '-' + Math.random()}>
-            <p className="tooltip">
-                {item.url ? (
-                    <a
-                        href={item.url}
-                        target="_blank"
-                    >
-                        {item.organization}
-                    </a>
-                ) : (
-                    item.organization
-                )}
-                <span className="tooltiptext">
-                    {item.address}
-                    <br />
-                    {item.postalCode + ' ' + item.city}
-                    <br />
-                    {(item.region != '' ? item.region + ', ' : '') +
-                        item.country}
-                </span>
-            </p>
-            <p>
-                <span className="contact-item role">
-                    {(item.name != '' ? item.name + ' - ' : '') + item.role}
-                </span>
-                {item.email != '' ? (
-                    <>
-                        <br />
-                        <span className="contact-item email">
-                            <a href={`mailto:${item.email}`}>{item.email}</a>
-                        </span>
-                    </>
-                ) : null}
-                {item.phoneNumber != '' ? (
-                    <>
-                        <br />
-                        <span className="contact-item phone-number">
-                            {item.phoneNumber}
-                        </span>
-                    </>
-                ) : null}
-                {item.faxNumber != '' ? (
-                    <>
-                        <br />
-                        <span className="contact-item fax-number">
-                            {item.faxNumber}
-                        </span>
-                    </>
-                ) : null}
-            </p>
-        </li>
-    );
-};
-
-const getThemes = item => {
-    return (
-        <div id="themes">
-            {item.themes_thesaurus.map((thesaurus, index) => {
-                if (thesaurus == '') return null;
-
-                let parsedThesaurus = JSON.parse(thesaurus);
-                let parsedKeywords = JSON.parse(item.themes_keywords[index]);
+        <div id={label + 's'}>
+            {items.map((item, index) => {
+                item = JSON.parse(item);
 
                 return (
                     <div
-                        key={'theme-' + index}
-                        className="theme"
+                        className="person_organization"
+                        key={label + '-' + index}
                     >
-                        <p className="thesaurus">
-                            <b>
-                                {parsedThesaurus.url ? (
-                                    <a
-                                        href={parsedThesaurus.url}
-                                        target="_blank"
-                                    >
-                                        {parsedThesaurus.title}
-                                    </a>
-                                ) : (
-                                    parsedThesaurus.title
-                                )}
-                            </b>
-                        </p>
-                        <p>
-                            {parsedKeywords.map((keyword, index) => {
-                                let name =
-                                    (index > 0 ? ', ' : '') + keyword.name;
-
-                                return keyword.url ? (
-                                    <a
-                                        key={'url-' + index}
-                                        href={keyword.url}
-                                        target="_blank"
-                                    >
-                                        {name}
-                                    </a>
-                                ) : (
-                                    name
-                                );
-                            })}
-                        </p>
+                        {item.person && (
+                            <div className="person">{item.person}</div>
+                        )}
+                        {item.organization && (
+                            <div className={item.person ? '' : 'organization'}>
+                                {item.organization}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -186,129 +289,333 @@ const getThemes = item => {
     );
 };
 
-export function Resource(document) {
-    if (document.document) document = document.document;
+const getLinks = (label, items) => {
+    return (
+        <div className="links">
+            {items.map((item, index) => {
+                let linkLabel = item.name || decodeURIComponent(item.url);
+                let linkStatus = 'ok';
 
-    let featuredImage = null;
+                if (linkLabel === 'undefined') {
+                    linkLabel = 'checking url';
+                }
 
-    if (document.wkb_geometry) {
-        featuredImage = getMap(document);
-    }
+                if (item.status_code >= 300 && item.status_code < 400) {
+                    linkStatus = 'redirected';
+                } else if (item.status_code === 403) {
+                    linkStatus = 'unauthorized';
+                } else if (item.status_code === 404) {
+                    linkStatus = 'not_found';
+                } else if (item.status_code > 400) {
+                    linkStatus = 'error';
+                }
 
-    let rightSideElements = {};
-
-    rightSideElements['Resource type'] = <p>{document.type}</p>;
-
-    if (document.type === 'Journal Article') {
-        rightSideElements['Journal'] = <p>{document.parentidentifier}</p>;
-    }
-
-    rightSideElements['Dates'] = (
-        <div>
-            {(document.date_creation || document.date_publication) &&
-                getDateParagraph(
-                    'Issued: ',
-                    document.date_creation || document.date_publication
-                )}
-            {(document.date_modified || document.date_revised) &&
-                getDateParagraph(
-                    'Last changed: ',
-                    document.date_modified || document.date_revised
-                )}
-            {getDateParagraph('Last harvested: ', document.insert_date)}
-            {(document.time_begin || document.time_end) &&
-                getDateParagraph(
-                    'Temporal coverage: ',
-                    document.time_begin,
-                    document.time_end
-                )}
+                return (
+                    <a
+                        key={label + '-' + index}
+                        href={decodeURIComponent(item.url)}
+                        className={`link ${linkStatus}`}
+                        target="_blank"
+                    >
+                        {linkLabel}
+                    </a>
+                );
+            })}
         </div>
     );
+};
 
-    if (document.contacts_organization?.length > 0) {
-        rightSideElements['Contact'] = (
-            <ul id="contacts">
-                {document.contacts_organization.map((organization, index) =>
-                    getContact({
-                        organization: organization,
-                        url:
-                            document.contacts_organization_url[index] ||
-                            (document.contacts_onlineresource[index] &&
-                                JSON.parse(
-                                    document.contacts_onlineresource[index]
-                                ).url),
-                        address: document.contacts_address[index],
-                        postalCode: document.contacts_postcode[index],
-                        city: document.contacts_city[index],
-                        region: document.contacts_region[index],
-                        country: document.contacts_country[index],
-                        name:
-                            document.contacts_name[index] ||
-                            document.contacts_name_url[index],
-                        role: document.contacts_role[index],
-                        email: document.contacts_email[index],
-                        phoneNumber: document.contacts_phone[index],
-                        faxNumber: document.contacts_fax[index]
-                    })
-                )}
-            </ul>
+const getList = (label, value) => {
+    return (
+        <ul>
+            {value.map((item, index) => (
+                <li key={label + '-' + index}>{item}</li>
+            ))}
+        </ul>
+    );
+};
+
+const getProject = item => {
+    let project = JSON.parse(item);
+
+    return (
+        <div className="project">
+            <p className="acronym">{project.acronym}</p>
+            <p className="title">{project.title}</p>
+            <p className="grantnumber">Grant number: {project.grantnr}</p>
+        </div>
+    );
+};
+
+const getMap = item => {
+    let map = (
+        <HTMLMap
+            data={{
+                wktFeature: item.spatial,
+                crs: mapParameters.dataProjection
+            }}
+            key="map"
+        />
+    );
+
+    if ('spatial' in item.augments) {
+        map = (
+            <ToolTip
+                title={`This metadata value is augmented. The original bounding box is ${item.augments.spatial.original}.`}
+            >
+                <div className={'augmented'}>{map}</div>
+            </ToolTip>
         );
     }
 
-    rightSideElements['Links'] = (
-        <ul id="links">
-            {document.links_url.map(
-                (link, index) =>
-                    link != '' && (
-                        <li
-                            key={'link-' + index}
-                            className="link"
-                        >
-                            <a
-                                href={link}
-                                target="_blank"
-                            >
-                                {document.links_name[index] || link}
-                            </a>
-                        </li>
-                    )
-            )}
-        </ul>
+    return map;
+};
+
+const getLeftSideElements = document => {
+    let leftSideElements = [];
+
+    leftSideElements.push(
+        <h1
+            key="title"
+            dangerouslySetInnerHTML={{ __html: document.title }}
+        />
     );
 
-    if (document.themes_thesaurus)
-        rightSideElements['Themes'] = getThemes(document);
+    if (document.abstract) {
+        leftSideElements.push(
+            <div
+                key="abstract"
+                dangerouslySetInnerHTML={{
+                    __html: document.abstract
+                }}
+            />
+        );
+    }
+
+    if (document.subjects) {
+        leftSideElements.push(
+            getKeywordChips(document.subjects, document.matched_subjects)
+        );
+    }
+
+    return leftSideElements;
+};
+
+const getRightSideElements = document => {
+    let rightSideElements = [];
+
+    rightSideElements.push([
+        null,
+        <div id="right-side-top">
+            <div>{getSingularAttributes(document)}</div>
+            {getAugmentations(document)}
+        </div>
+    ]);
+
+    let dateElements = [
+        'date_creation',
+        'date_revision',
+        'date_publication',
+        'date_harvest'
+    ].map(field => document[field] && getDateParagraph(field, document[field]));
+
+    if (dateElements.filter(item => item != undefined).length > 0) {
+        rightSideElements.push(['Dates', <div>{dateElements}</div>]);
+    }
+
+    if (document.view_authors) {
+        rightSideElements.push([
+            getElementTitle('view_authors'),
+            getPersonsAndOrganizations('author', document.view_authors)
+        ]);
+    }
+
+    if (document.view_contacts) {
+        rightSideElements.push([
+            getElementTitle('view_contacts'),
+            getPersonsAndOrganizations('contact', document.view_contacts)
+        ]);
+    }
+
+    if (document.sources) {
+        rightSideElements.push([
+            getElementTitle('sources'),
+            getList('source', document.sources)
+        ]);
+    }
+
+    if (document.projects) {
+        rightSideElements.push([
+            getElementTitle('projects'),
+            getProject(document.projects[0])
+        ]);
+    }
+
+    if (document.links) {
+        rightSideElements.push([
+            getElementTitle('links'),
+            getLinks('link', document.links)
+        ]);
+    }
+
+    return rightSideElements;
+};
+
+const getAuthor = document => {
+    let authors = null;
+
+    if (document.view_authors) {
+        let organizations = document.view_authors.reduce(
+            (result, currentAuthor) => {
+                currentAuthor = JSON.parse(currentAuthor);
+
+                if (!currentAuthor.organization) {
+                    result[0].push(currentAuthor.person);
+                } else {
+                    if (!(currentAuthor.organization in result[1])) {
+                        result[1][currentAuthor.organization] = [];
+                    }
+
+                    if (currentAuthor.person) {
+                        result[1][currentAuthor.organization].push(
+                            currentAuthor.person
+                        );
+                    }
+                }
+
+                return result;
+            },
+            [[], {}]
+        );
+
+        authors = [];
+
+        if (organizations[0].length > 0) {
+            authors = organizations[0];
+        }
+
+        authors = [
+            ...authors,
+            ...Object.entries(organizations[1]).map(([key, value]) =>
+                value.length > 0 ? key + ': ' + value.join(', ') : key
+            )
+        ].join('; ');
+    }
+
+    return authors && <p className="authors">{authors}</p>;
+};
+
+const getSimilarResources = document => {
+    if (!document.similarResources) return;
+
+    return document.similarResources.map(item => (
+        <a
+            className="similar-resource"
+            key={item.identifier}
+            href={getDetailsPageUrl(item.identifier, true)}
+            target="_blank"
+        >
+            <h2
+                className="title"
+                dangerouslySetInnerHTML={{
+                    __html: item.title
+                }}
+            />
+            {getAuthor(item)}
+            {item.date && (
+                <p className="entry-date">
+                    <i>Available since: {getDate(item.date)}</i>
+                </p>
+            )}
+
+            <div className="tags">
+                <span>{document.type}</span>
+                {document.soilmission && (
+                    <span>{tagDefinitions.soilmission}</span>
+                )}
+                {document.european_funded && (
+                    <span>{tagDefinitions.european_funded}</span>
+                )}
+                {document.license && <span>{document.license}</span>}
+            </div>
+
+            <p
+                className="abstract"
+                dangerouslySetInnerHTML={{
+                    __html: item.abstract
+                }}
+            />
+        </a>
+    ));
+};
+
+const getBottomElements = document => {
+    return [
+        <div key="similar-resrouces">Similar resources</div>,
+        getSimilarResources(document)
+    ];
+};
+
+export function Resource({ document }) {
+    if (!document) return <div>No resource with this identifier</div>;
+
+    let featuredImages = [];
+
+    if (document.spatial) {
+        featuredImages.push(getMap(document));
+    }
+
+    if (document.thumbnail) {
+        featuredImages.push(
+            <img
+                key="thumbnail"
+                src={document.thumbnail}
+                alt="thumbnail"
+            />
+        );
+    }
 
     return (
         <div id="main-container">
-            <div id="left-side-container">
-                <h1>{document.title}</h1>
-                {getAuthors(document)}
-                {document.abstract && (
-                    <div
-                        dangerouslySetInnerHTML={{
-                            __html: document.abstract
-                        }}
-                    />
-                )}
-                {document.keywords && getKeywordChips(document.keywords)}
-            </div>
-            <div id="right-side-container">
-                {featuredImage && (
-                    <div id="featured-image">{featuredImage}</div>
-                )}
-                <div
-                    id="attributes-container"
-                    className={featuredImage ? 'includeImage' : ''}
-                >
-                    {Object.entries(rightSideElements).map(([label, value]) => (
-                        <div key={label}>
-                            <p className="attribute-title">{label}</p>
-                            {value}
+            <div id="top-container">
+                <div id="left-side-container">
+                    {getLeftSideElements(document)}
+                </div>
+                <div id="right-side-container">
+                    {featuredImages.map((featuredImage, index) => (
+                        <div
+                            key={'featured-image-' + index}
+                            className="featured-image"
+                        >
+                            {featuredImage}
                         </div>
                     ))}
+                    <div
+                        id="attributes-container"
+                        className={
+                            featuredImages.length == 0
+                                ? ''
+                                : featuredImages.length == 1
+                                  ? 'include-image'
+                                  : 'include-images'
+                        }
+                    >
+                        {getRightSideElements(document).map(
+                            ([label, value], index) => (
+                                <div key={'right-' + index}>
+                                    {label && (
+                                        <p className="attribute-title">
+                                            {label}
+                                        </p>
+                                    )}
+                                    {value}
+                                </div>
+                            )
+                        )}
+                    </div>
                 </div>
             </div>
+            <div id="bottom-container">{getBottomElements(document)}</div>
         </div>
     );
 }

@@ -666,7 +666,20 @@
     <lst name="defaults">
       <str name="echoParams">explicit</str>
       <int name="rows">10</int>
+      <str name="wt">json</str>
+      <str name="spellcheck">true</str>
+      <str name="spellcheck.extendedResults">true</str>
+      <str name="spellcheck.count">10</str>
+      <str name="spellcheck.alternativeTermCount">5</str>
+      <str name="spellcheck.maxResultsForSuggest">5</str>
+      <str name="spellcheck.collate">true</str>
+      <str name="spellcheck.collateExtendedResults">true</str>
+      <str name="spellcheck.maxCollationTries">10</str>
+      <str name="spellcheck.maxCollations">5</str>
     </lst>
+    <arr name="last-components">
+      <str>spellcheck</str>
+    </arr>
   </requestHandler>
 
   <!-- A request handler that returns indented JSON by default -->
@@ -703,7 +716,7 @@
     <!-- a spellchecker built from a field of the main index -->
     <lst name="spellchecker">
       <str name="name">default</str>
-      <str name="field">_text_</str>
+      <str name="field">text_all</str>
       <str name="classname">solr.DirectSolrSpellChecker</str>
       <!-- the spellcheck distance measure used, the default is the internal levenshtein -->
       <str name="distanceMeasure">internal</str>
@@ -723,18 +736,16 @@
         <float name="thresholdTokenFrequency">.01</float>
       -->
     </lst>
-
+    
     <!-- a spellchecker that can break or combine words.  See "/spell" handler below for usage -->
-    <!--
-    <lst name="spellchecker">
+    <!--<lst name="spellchecker">
       <str name="name">wordbreak</str>
       <str name="classname">solr.WordBreakSolrSpellChecker</str>
-      <str name="field">name</str>
+      <str name="field">text_all</str>
       <str name="combineWords">true</str>
       <str name="breakWords">true</str>
       <int name="maxChanges">10</int>
-    </lst>
-    -->
+    </lst>-->
   </searchComponent>
 
   <!-- A request handler for demonstrating the spellcheck component.
@@ -757,7 +768,7 @@
            collations (re-written queries) can include a combination of
            corrections from both spellcheckers -->
       <str name="spellcheck.dictionary">default</str>
-      <str name="spellcheck">on</str>
+      <str name="spellcheck">true</str>
       <str name="spellcheck.extendedResults">true</str>
       <str name="spellcheck.count">10</str>
       <str name="spellcheck.alternativeTermCount">5</str>
@@ -879,6 +890,41 @@
       </boundaryScanner>
     </highlighting>
   </searchComponent>
+
+  <!--Suggest Component-->
+  <searchComponent name="suggest" class="solr.SuggestComponent">
+    <lst name="suggester">
+      <str name="name">titleSuggester</str>
+      <str name="lookupImpl">AnalyzingInfixLookupFactory</str>
+      <str name="dictionaryImpl">DocumentDictionaryFactory</str>
+      <str name="field">title</str>
+      <str name="suggestAnalyzerFieldType">text_general</str>
+      <str name="highlight">false</str>
+      <str name="buildOnStartup">true</str>
+    </lst>
+    <lst name="suggester">
+      <str name="name">authorsSuggester</str>
+      <str name="lookupImpl">AnalyzingInfixLookupFactory</str>
+      <str name="dictionaryImpl">DocumentDictionaryFactory</str>
+      <str name="field">authors_suggest</str>
+      <str name="suggestAnalyzerFieldType">text_general</str>
+      <str name="highlight">false</str>
+      <str name="buildOnStartup">true</str>
+    </lst>
+  </searchComponent>
+
+  <requestHandler name="/suggest" class="solr.SearchHandler" startup="lazy">
+    <lst name="defaults">
+      <str name="suggest">true</str>
+      <str name="suggest.count">10</str>
+      <str name="suggest.dictionary">titleSuggester</str>
+      <str name="suggest.dictionary">authorsSuggester</str>
+      <str name="suggest.build">true</str>
+    </lst>
+    <arr name="components">
+      <str>suggest</str>
+    </arr>
+  </requestHandler>
 
   <!-- Update Request Processors
        https://solr.apache.org/guide/solr/latest/configuration-guide/update-request-processors.html

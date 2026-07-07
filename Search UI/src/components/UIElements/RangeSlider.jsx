@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import styled from '@emotion/styled';
 import Slider from '@mui/material/Slider';
-import { Input, Tooltip } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { Input } from '@mui/material';
+
+import ToolTip from './ToolTip';
 
 const FilterOptions = styled.div`
     display: flex;
@@ -120,9 +122,9 @@ const RangeSlider = ({
 
     return (
         <FilterOptions>
-            <Tooltip title={helperText}>
+            <ToolTip title={helperText}>
                 <StyledLegend>{label}</StyledLegend>
-            </Tooltip>
+            </ToolTip>
             <StyledSlider>
                 <Input
                     value={localValue[0]}

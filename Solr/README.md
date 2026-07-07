@@ -16,4 +16,5 @@ Copy the data folder from your local solr folder (the main folder of the git rep
 
 kubectl cp <LOCAL_SOLR_REPOSITORY_FOLDER>/app/data <POD_ID>:/app -n soilwise-test
 
-Restart the pod
+
+Restart the pod 

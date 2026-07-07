@@ -12,15 +12,22 @@ const Decades = ({ data }) => {
                 enableLabel={false}
                 tooltip={({ indexValue, value }) => {
                     return (
-                        <span
+                        <div
                             style={{
                                 whiteSpace: 'nowrap',
                                 backgroundColor: 'white',
+                                fontSize: '14px',
+                                width: 'fit-content',
+                                textAlign: 'center',
                                 padding: '5px'
                             }}
                         >
-                            {indexValue}: {value} resources
-                        </span>
+                            <i>{indexValue}</i>
+                            <br />
+                            <b>
+                                <big>{value}</big>
+                            </b>
+                        </div>
                     );
                 }}
                 axisBottom={null}

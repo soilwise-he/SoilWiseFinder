@@ -4,6 +4,8 @@ import { Button } from '@mui/material';
 import MapWrapper from 'components/Map/MapWrapper';
 import SimpleMapContent from 'components/Map/MapContent/SimpleMapContent';
 import { mapParameters, tagDefinitions } from 'src/services/settings';
+import { useCallback } from 'react';
+import ToolTip from 'components/UIElements/ToolTip';
 
 const Entry = styled.a`
     display: flex;
@@ -55,6 +57,31 @@ const Tags = styled.div`
     display: flex;
     flex-direction: row;
     gap: var(--mui-spacing-0);
+    align-items: center;
+`;
+
+const Tag = styled(Button)`
+    border: 1px solid var(--variant-outlinedBorder) !important;
+    background-color: var(--variant-outlinedBg) !important;
+    color: var(--variant-outlinedColor) !important;
+
+    &.augmented {
+        color: var(--mui-palette-custom-augmentationColor) !important;
+        background-color: var(--mui-palette-custom-augmentationBg) !important;
+        border: 1px solid var(--mui-palette-custom-augmentationBorder) !important;
+    }
+`;
+
+const Status = styled.div`
+    width: 20px;
+    height: 2.28rem;
+    border: 1px solid var(--mui-palette-custom-augmentationBorder);
+    border-radius: var(--mui-shape-borderRadius-0);
+    background: linear-gradient(
+        to top,
+        var(--mui-palette-custom-augmentationBorder) ${props => props.value}%,
+        white ${props => props.value}%
+    );
 `;
 
 const Abstract = styled.p`
@@ -98,6 +125,11 @@ const ImageContainer = styled.div`
         width: 100%;
         max-height: 250px;
         object-fit: contain;
+    }
+
+    &.augmented {
+        border: 2px solid var(--mui-palette-custom-augmentationBorder);
+        border-radius: var(--mui-shape-borderRadius-0);
     }
 `;
 
@@ -143,7 +175,15 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
             ].join('; ');
         }
 
-        return authors && <Authors>{authors}</Authors>;
+        return (
+            authors && (
+                <Authors
+                    dangerouslySetInnerHTML={{
+                        __html: authors
+                    }}
+                />
+            )
+        );
     };
 
     const getDate = () => {
@@ -162,6 +202,79 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
         );
     };
 
+    const getTag = useCallback(
+        (tagType, tagValue) => {
+            if (!data.augments) return;
+
+            let tag = (
+                <Tag
+                    disabled
+                    className={tagType in data.augments ? 'augmented' : ''}
+                >
+                    {tagValue}
+                </Tag>
+            );
+
+            if (tagType in data.augments) {
+                tag = (
+                    <ToolTip
+                        title={`This metadata value is augmented. The original value is '${data.augments[tagType].original}'.`}
+                    >
+                        <span>{tag}</span>
+                    </ToolTip>
+                );
+            }
+
+            return tag;
+        },
+        [data.augments]
+    );
+
+    const getCompleteness = useCallback(() => {
+        if (!data.augments || !('completeness' in data.augments)) return;
+
+        let value = parseFloat(data.augments.completeness.target).toFixed(0);
+
+        return (
+            <ToolTip
+                title={`The metadata of this record is ${value}% complete.`}
+            >
+                <Status value={value} />
+            </ToolTip>
+        );
+    }, [data.augments]);
+
+    const getMap = useCallback(() => {
+        if (!data.augments) return;
+
+        let map = (
+            <ImageContainer
+                className={'spatial' in data.augments ? 'augmented' : ''}
+            >
+                <MapWrapper>
+                    <SimpleMapContent
+                        data={{
+                            wktFeature: data.spatial,
+                            crs: mapParameters.dataProjection
+                        }}
+                    />
+                </MapWrapper>
+            </ImageContainer>
+        );
+
+        if ('spatial' in data.augments) {
+            map = (
+                <ToolTip
+                    title={`This metadata value is augmented. The original bounding box is ${data.augments.spatial.original}.`}
+                >
+                    {map}
+                </ToolTip>
+            );
+        }
+
+        return map;
+    }, [data.augments]);
+
     return (
         <Entry
             {...props}
@@ -169,17 +282,16 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
         >
             <Summary>
                 <Tags>
-                    {data.type && (
-                        <Button variant="outlined">{data.type}</Button>
-                    )}
-                    {data.soilmission && (
-                        <Button variant="outlined">
-                            {tagDefinitions.soilmission}
-                        </Button>
-                    )}
-                    {data.license && (
-                        <Button variant="outlined">{data.license}</Button>
-                    )}
+                    {getCompleteness()}
+                    {data.type && getTag('type', data.type)}
+                    {data.soilmission &&
+                        getTag('soilmission', tagDefinitions.soilmission)}
+                    {data.european_funded &&
+                        getTag(
+                            'european_funded',
+                            tagDefinitions.european_funded
+                        )}
+                    {data.license && getTag('license', data.license)}
                 </Tags>
 
                 <h2
@@ -196,18 +308,7 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
                     }}
                 />
             </Summary>
-            {data.spatial && (
-                <ImageContainer>
-                    <MapWrapper>
-                        <SimpleMapContent
-                            data={{
-                                wktFeature: data.spatial,
-                                crs: mapParameters.dataProjection
-                            }}
-                        />
-                    </MapWrapper>
-                </ImageContainer>
-            )}
+            {data.spatial && getMap()}
             {data.thumbnail && !data.spatial && (
                 <ImageContainer>
                     <img

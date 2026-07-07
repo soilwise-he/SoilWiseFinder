@@ -3,12 +3,19 @@
 import { useEffect, useState } from 'react';
 import { useRef } from 'react';
 import styled from '@emotion/styled';
-import { Button, IconButton, Popper, TextField } from '@mui/material';
+import {
+    Button,
+    IconButton,
+    Popper,
+    TextField,
+    useMediaQuery
+} from '@mui/material';
 import { default as MagnifierIcon } from '@mui/icons-material/Search';
 import { Clear } from '@mui/icons-material';
 
 import { store } from 'src/context/store';
 import useGetData from 'src/services/getData';
+import muiTheme from 'src/style/theme';
 
 const SearchText = styled.div`
     width: calc(100% - 2px);
@@ -24,21 +31,23 @@ const SearchText = styled.div`
     }
 
     .MuiInput-input {
-        font-size: 18px !important;
+        font-size: 1.1rem !important;
     }
 
-    @media only screen and (max-width: 600px) {
-        .MuiInput-input {
-            font-size: 14px !important;
-        }
+    ${muiTheme.breakpoints.down('sm')} {
+        height: 45px;
     }
 `;
 const SearchIcon = styled(MagnifierIcon)`
     margin: auto 10px auto 22px;
-    color: var(--mui-palette-secondary-main);
+    color: var(--mui-palette-text-disabled);
 
-    @media only screen and (max-width: 600px) {
-        margin: auto 5px auto 14px;
+    ${muiTheme.breakpoints.down('sm')} {
+        display: none;
+
+        + div {
+            margin-left: 20px;
+        }
     }
 `;
 const FilterOptions = styled(Popper)`
@@ -70,38 +79,24 @@ const OptionLabel = styled.span`
     }
 `;
 const SearchButton = styled(Button)`
-    min-width: 140px;
+    ${muiTheme.breakpoints.down('sm')} {
+        padding: 10px;
+        min-width: fit-content !important;
+    }
 `;
 
 const SearchBar = ({ handleSubmit }) => {
     const [searchText, setSearchText] = useState('');
-    const [filterOptions, setFilterOptions] = useState([]);
-    const [filteredFilterOptions, setFilteredFilterOptions] = useState([]);
+    const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [anchorElement, setAnchorElement] = useState(null);
-    const previousAnchorElementPosition = useRef(undefined);
+    const previousAnchorElementPosition = useRef(null);
     const { query, setQuery } = store();
-    const { getTerms } = useGetData();
+    const { getSuggestions } = useGetData();
+    const [isFetching, setIsFetching] = useState(false);
 
     useEffect(() => {
-        setSearchText(query);
+        setSearchText(query || '');
     }, [query]);
-
-    useEffect(() => {
-        let terms = getTerms();
-
-        if (!terms) return;
-
-        let options = Object.entries(terms)
-            .filter(([key, _]) => key !== 'keywords_terms')
-            .flatMap(([key, value]) =>
-                value.options.map(option => ({
-                    id: key + '-' + option.id,
-                    value: option.value
-                }))
-            )
-            .sort((a, b) => (a.value > b.value ? 1 : -1));
-        setFilterOptions(options);
-    }, [getTerms]);
 
     useEffect(() => {
         if (anchorElement) {
@@ -115,32 +110,42 @@ const SearchBar = ({ handleSubmit }) => {
         }
     }, [anchorElement]);
 
-    const handleChange = event => {
+    const handleChange = async event => {
         let value = event.target.value;
 
         if (value === '' || value.slice(-1) === ' ') {
-            setFilteredFilterOptions([]);
-        } else {
+            setFilteredSuggestions([]);
+        } else if (!isFetching) {
             let words = value.split(' ');
             let currentWord = words[words.length - 1];
 
-            let options = filterOptions
-                .filter(item => item.value.includes(currentWord))
-                .sort((a, b) => {
-                    if (a.value.startsWith(currentWord)) {
-                        if (b.value.startsWith(currentWord)) {
-                            return a.value > b.value ? 1 : -1;
-                        } else {
-                            return -1;
-                        }
-                    } else if (b.value.startsWith(currentWord)) {
-                        return 1;
-                    } else {
-                        return a.value > b.value ? 1 : -1;
-                    }
-                })
-                .slice(1, 10);
-            setFilteredFilterOptions(options);
+            setIsFetching(true);
+            getSuggestions(currentWord).then(suggestions => {
+                setIsFetching(false);
+                setFilteredSuggestions(
+                    suggestions
+                        .sort((a, b) => {
+                            if (a.value.startsWith(currentWord.toLowerCase())) {
+                                if (
+                                    b.value.startsWith(
+                                        currentWord.toLowerCase()
+                                    )
+                                ) {
+                                    return a.value > b.value ? 1 : -1;
+                                } else {
+                                    return -1;
+                                }
+                            } else if (
+                                b.value.startsWith(currentWord.toLowerCase())
+                            ) {
+                                return 1;
+                            } else {
+                                return a.value > b.value ? 1 : -1;
+                            }
+                        })
+                        .slice(0, 10)
+                );
+            });
         }
 
         const getBoundingClientRect = () => {
@@ -189,7 +194,7 @@ const SearchBar = ({ handleSubmit }) => {
 
             focusElement?.focus();
         } else if (event.code === 'Enter') {
-            setFilteredFilterOptions([]);
+            setFilteredSuggestions([]);
 
             if (event.target.tagName === 'INPUT') {
                 handleSubmit(searchText);
@@ -201,7 +206,16 @@ const SearchBar = ({ handleSubmit }) => {
 
     const handleSelect = option => _ => {
         let words = searchText.split(' ');
-        setSearchText(words.slice(0, -1).join(' ').concat(option.value));
+        setSearchText(
+            words
+                .slice(0, -1)
+                .join(' ')
+                .concat(
+                    option.value.indexOf(' ') > 0
+                        ? ' "' + option.value + '"'
+                        : ' ' + option
+                )
+        );
         document.getElementById('search-text').focus();
     };
 
@@ -224,11 +238,11 @@ const SearchBar = ({ handleSubmit }) => {
                 id="search-text"
             />
             <FilterOptions
-                open={filteredFilterOptions.length > 0}
+                open={filteredSuggestions.length > 0}
                 anchorEl={anchorElement}
                 placement="bottom-start"
             >
-                {filteredFilterOptions.map(option => (
+                {filteredSuggestions.map(option => (
                     <Button
                         key={option.id}
                         onClick={handleSelect(option)}
@@ -238,7 +252,7 @@ const SearchBar = ({ handleSubmit }) => {
                         disableRipple
                     >
                         <OptionLabel>
-                            <p>{option.value}</p>
+                            <p>{option.type + ': ' + option.value}</p>
                         </OptionLabel>
                     </Button>
                 ))}
@@ -258,9 +272,12 @@ const SearchBar = ({ handleSubmit }) => {
                 color="primary"
                 variant="contained"
                 onClick={() => handleSubmit(searchText)}
-                label="Search"
             >
-                search
+                {useMediaQuery(() => muiTheme.breakpoints.down('sm')) ? (
+                    <MagnifierIcon />
+                ) : (
+                    'search'
+                )}
             </SearchButton>
         </SearchText>
     );

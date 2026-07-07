@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 
 import useGetData from 'src/services/getData';
-import NewsItem from 'components/Catalogue/News/NewsItem';
+import NewsItem from 'components/Catalogue/Info/News/NewsItem';
 
 const MainContainer = styled.div`
     max-width: 330px;

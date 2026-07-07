@@ -7,7 +7,7 @@ import { ThemeProvider } from '@mui/material';
 import muiTheme from 'src/style/theme';
 import GlobalStyle from 'src/style/globalStyle';
 import { StoreProvider } from 'src/context/store';
-import 'src/style/resourceStyle.css';
+import 'src/style/resourceStyle.scss';
 import Header from 'src/components/MainLayout/Header';
 import Footer from 'src/components/MainLayout/Footer';
 

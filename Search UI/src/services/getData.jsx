@@ -1,13 +1,14 @@
 import { useCallback } from 'react';
 
 import {
-    termLabels,
     getBaseUrlApi,
-    pyscwApiUrl,
-    typeOfAreas,
+    typeOfSpatialFilters,
     solrFacets,
-    dateRanges,
-    defaultRange
+    defaultRange,
+    resourceTypeFilterKey,
+    filterDefinitions,
+    nestedTerms,
+    getUrlOfExternalApi
 } from './settings';
 import { store } from 'src/context/store';
 
@@ -47,18 +48,21 @@ export function fetchData(endpoint, body) {
     });
 }
 
-export function fetchPyscwData(endpoint) {
+export function fetchExternalData(endpoint, body = null) {
     return new Promise((resolve, reject) => {
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
-        let url = `${pyscwApiUrl}/${endpoint}`;
-
-        fetch(url, {
-            method: 'GET',
+        let url = `${getUrlOfExternalApi(endpoint)}`;
+        let parameters = {
+            method: body ? 'POST' : 'GET',
             headers,
             credentials: 'omit',
             redirect: 'follow'
-        })
+        };
+
+        if (body) parameters.body = JSON.stringify(body);
+
+        fetch(url, parameters)
             .then(response => {
                 return response.json();
             })
@@ -76,21 +80,33 @@ export function fetchPyscwData(endpoint) {
 }
 
 const useGetData = () => {
-    const { facets, pagination, filters } = store();
+    const { facets, facetHierarchies, pagination, filters } = store();
 
     const getStatistics = useCallback(() => {
-        if (!facets) return;
+        if (!facets || facets.length === 0) return;
 
-        let types = facets.type_terms.buckets
+        let types = Object.entries(
+            facets
+                .filter(item => item[0] === 'type_terms')
+                .map(item => item[1])[0]
+        )
+            .filter(item => item[0] !== 'Other')
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+
+        let projects = Object.entries(
+            facets
+                .filter(item => item[0] === 'project_acronyms_terms')
+                .map(item => item[1])[0]
+        )
             .sort((a, b) => b.count - a.count)
-            .slice(0, 4);
+            .slice(0, 3);
+
+        let dates = facets
+            .filter(item => item[0] === 'date_range')
+            .map(item => item[1])[0];
         let startYear =
-            Math.floor(
-                (new Date(facets.date_range.buckets[0].val).getFullYear() -
-                    1900) /
-                    10
-            ) *
-                10 +
+            Math.floor((new Date(dates[0]).getFullYear() - 1900) / 10) * 10 +
             1900;
         let countsPerDecade = Array.from(
             {
@@ -103,12 +119,14 @@ const useGetData = () => {
             })
         );
 
-        for (let item of facets.date_range.buckets) {
+        for (let item of dates[2]) {
             let currentDecade =
                 Math.ceil((new Date(item.val).getFullYear() - startYear) / 10) -
                 1;
 
             if (currentDecade < 0) currentDecade = 0;
+
+            if (currentDecade > 9) currentDecade = 9;
 
             countsPerDecade[currentDecade].count += item.count;
         }
@@ -118,63 +136,48 @@ const useGetData = () => {
         }
 
         return {
-            numberOfResources: facets.count,
-            typeDistribution: [
-                ...types.map(item => ({
-                    id: item.val,
-                    label: item.val,
-                    value: item.count
-                })),
-                {
-                    id: 'other',
-                    label: 'other',
-                    value:
-                        facets.count -
-                        types.reduce(
-                            (sumValue, currentItem) =>
-                                sumValue + currentItem.count,
-                            0
-                        )
-                }
-            ],
+            numberOfResources: pagination.numberOfItems,
+            typeDistribution: types.map(item => ({
+                id: item[0],
+                label: item[0],
+                value: item[1]
+            })),
             temporalDistribution: {
-                startYear: countsPerDecade[0].startYear,
-                countsPerDecade: countsPerDecade.map(item => ({
+                startYear: countsPerDecade?.[0].startYear,
+                countsPerDecade: countsPerDecade?.map(item => ({
                     decade: item.startYear + ' - ' + item.endYear,
                     count: item.count,
                     isCoveredInFull: item.endYear <= new Date().getFullYear()
                 }))
             },
-            projects: facets.project_acronym_terms.buckets
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 3)
+            projects
         };
     }, [facets]);
 
     const getLatestInsert = async () => {
         let data = await fetchData(`solr/search`, {
             query: '*:*',
-            sort: 'insert_date desc',
+            sort: 'date_harvest desc',
             params: {
                 rows: 1
             }
         }).then(async lastEntry => {
-            let insertDate = lastEntry.response.docs[0].insert_date.substring(
+            let harvestDate = lastEntry.response.docs[0].date_harvest.substring(
                 0,
-                lastEntry.response.docs[0].insert_date.indexOf('T')
+                lastEntry.response.docs[0].date_harvest.indexOf('T')
             );
             const solrResponse = await fetchData(`solr/search`, {
                 query: '*:*',
                 filter:
-                    'insert_date:[' +
-                    insertDate +
+                    'date_harvest:[' +
+                    harvestDate +
                     'T00:00:00Z TO ' +
-                    insertDate +
+                    harvestDate +
                     'T23:59:59Z]'
             });
 
             return {
-                date: insertDate,
+                date: harvestDate,
                 count: solrResponse.responseHeader.numFound
             };
         });
@@ -185,7 +188,7 @@ const useGetData = () => {
     const getRecentEntries = async () => {
         const solrResponse = await fetchData(`solr/search`, {
             query: '*:*',
-            sort: 'date_creation desc, date_publication desc, insert_date desc',
+            sort: 'date_harvest desc, date desc',
             params: {
                 rows: 3
             }
@@ -195,210 +198,419 @@ const useGetData = () => {
     };
 
     const getNews = async () => {
-        const data = await fetchPyscwData(`/feeds/items?offset=0&limit=3`);
+        const data = await fetchExternalData(
+            `util/feeds/items?offset=0&limit=3`
+        );
 
         return data;
     };
 
     const getValidation = async value => {
-        const data = await fetchPyscwData(`/feeds/status/${value}`);
+        const data = await fetchExternalData(`util/pid/status/${value}`);
 
         return data;
     };
 
-    const getResources = useCallback(
-        (query, filters, sort) => {
-            let solrFilters = [];
+    const getAugmentations = async identifier => {
+        const data = await fetchExternalData(
+            `util/augments/${identifier}`
+        ).then(response => {
+            return Object.fromEntries(
+                response.map(item => [item.property, item])
+            );
+        });
 
-            if (filters.type.length > 0) {
-                solrFilters.push(
-                    'type:(' +
-                        filters.type.map(item => '"' + item + '"').join(' ') +
-                        ')'
-                );
-            }
+        return data;
+    };
+
+    async function fetchResources(
+        query,
+        sort,
+        solrParameters,
+        solrFilters,
+        solrFacets
+    ) {
+        try {
+            const result = await fetchData(`solr/search`, {
+                query: query,
+                filter: solrFilters,
+                sort: sort,
+                facet: solrFacets,
+                params: solrParameters
+            });
+
+            const augmentedResults = await Promise.all(
+                result.response.docs.map(async document => {
+                    const augments = await getAugmentations(
+                        document.identifier
+                    );
+                    let highlightedFields =
+                        result.highlighting[document.identifier];
+
+                    return {
+                        ...document,
+                        title: highlightedFields.title?.[0] || document.title,
+                        abstract:
+                            highlightedFields.abstract?.[0] ||
+                            document.abstract,
+                        view_authors:
+                            highlightedFields.authors_suggest ||
+                            document.authors_suggest,
+                        augments: augments
+                    };
+                })
+            );
+
+            return {
+                ...result,
+                response: { ...result.response, docs: augmentedResults }
+            };
+        } catch (error) {
+            console.error('Error:', error);
+            throw error;
+        }
+    }
+
+    const getResources = useCallback(
+        async (query, filters, sort, all = false) => {
+            let solrParameters = {
+                mm: '2<75%',
+                df: 'title',
+                ps: 2.0,
+                tie: 0.1,
+                qf: `title^2 abstract^2 subjects^1 matched_subjects^2 authors_suggest^2`,
+                pf: `title^8 abstract^4 subjects^1 matched_subjects^2 authors_suggest^8`,
+                defType: 'edismax',
+                rows: all
+                    ? pagination.numberOfItems
+                    : pagination.numberOfItemsPerPage,
+                start: all
+                    ? 0
+                    : pagination.pageIndex * pagination.numberOfItemsPerPage,
+                hl: true,
+                'hl.fragsize': 500,
+                'hl.tag.pre': '<strong>',
+                'hl.tag.post': '</strong>'
+            };
+            let solrFilters = [];
 
             solrFilters = [
                 ...solrFilters,
-                ...Object.entries(filters.terms).map(
-                    ([key, value]) =>
-                        key.replace('_terms', '') +
-                        ':(' +
-                        value.map(item => '"' + item + '"').join(' ') +
-                        ')'
+                ...filters.choices.map(
+                    key => key.replace('_query', '') + ':(true)'
+                ),
+                ...Object.entries(filters.terms).map(([key, value]) =>
+                    value
+                        .map(
+                            item =>
+                                key.replace('_terms', '') +
+                                ':' +
+                                item.replaceAll(' ', '*')
+                        )
+                        .join(' OR ')
                 )
             ];
 
             for (let [key, value] of Object.entries(filters.ranges)) {
-                if (dateRanges[key].type === 'and') {
-                    solrFilters.push(
-                        ...dateRanges[key].attributes.map(
-                            attributeKey =>
-                                attributeKey.replace('_range', '') +
-                                ':[' +
-                                (key.from ? value.from : defaultRange.minimum) +
-                                '-01-01T00:00:00Z' +
-                                ' TO ' +
-                                (value.to ? value.to : defaultRange.maximum) +
-                                '-12-31T23:59:59Z' +
-                                ']'
-                        )
-                    );
-                } else {
-                    solrFilters.push({
-                        bool: {
-                            should: dateRanges[key].attributes.map(
-                                attributeKey =>
-                                    attributeKey.replace('_range', '') +
-                                    ':[' +
-                                    (key.from
-                                        ? value.from + '-01-01T00:00:00Z'
-                                        : '*') +
-                                    ' TO ' +
-                                    (value.to
-                                        ? value.to + '-12-31T23:59:59Z'
-                                        : '*') +
-                                    ']'
-                            )
-                        }
-                    });
-                }
+                solrFilters.push(
+                    (solrFacets[key].subtype === 'period'
+                        ? '{!field f=' + solrFacets[key].field + ' op=Within}'
+                        : solrFacets[key].field + ':') +
+                        '[' +
+                        (value.from ? value.from : defaultRange.minimum) +
+                        '-01-01T00:00:00Z' +
+                        ' TO ' +
+                        (value.to ? value.to : defaultRange.maximum) +
+                        '-12-31T23:59:59Z' +
+                        ']'
+                );
             }
 
-            if (filters.spatial?.area)
-                solrFilters.push(
-                    `{!field f=wkb_envelope score=overlapRatio}${filters.spatial.typeOfArea == typeOfAreas.overlap ? 'Intersects' : 'Within'}(ENVELOPE(${filters.spatial.area.join(',')}))`
-                );
+            if (filters.spatial?.area) {
+                solrParameters['fq'] =
+                    `spatial:"${filters.spatial.typeOfFilter === typeOfSpatialFilters.overlap ? 'Intersects' : 'Within'}(${filters.spatial.area})"`;
+            }
 
-            return fetchData(`solr/search`, {
-                query: query || '*:*',
-                filter: solrFilters,
-                sort: sort,
-                facet: solrFacets,
-                params: {
-                    mm: '2<75%',
-                    df: 'title',
-                    ps: 2.0,
-                    tie: 0.1,
-                    qf: `title^2 abstract^2 keywords^4 pdf_content^1`,
-                    pf: `title^8 abstract^4 keywords^8 pdf_content^1`,
-                    defType: 'edismax',
-                    rows: pagination.numberOfItemsPerPage,
-                    start:
-                        pagination.pageIndex * pagination.numberOfItemsPerPage,
-                    hl: true,
-                    'hl.fragsize': 500,
-                    'hl.tag.pre': '<strong>',
-                    'hl.tag.post': '</strong>'
-                }
-            });
+            const data = await fetchResources(
+                query || '*',
+                sort,
+                solrParameters,
+                solrFilters,
+                solrFacets
+            );
+
+            return data;
         },
         [pagination.pageIndex, pagination.numberOfItemsPerPage]
     );
 
-    const getTypes = useCallback(() => {
-        if (!facets) return;
+    const getResource = async document => {
+        let similarResources = await fetchData(`solr/search`, {
+            query: `q={!mlt fl=title,type,language,license,projects,sources,temporal_range,spatial mintf=1 maxdfpct=50}${document.identifier}`,
+            params: { spellcheck: false, rows: 3 }
+        });
 
-        let key = 'type_terms';
-        let options = facets[key]?.buckets.map((item, index) => ({
-            id: index,
-            value: item.val
-        }));
-
-        return {
-            label: termLabels[key],
-            selected:
-                filters.type && options
-                    ? options.filter(option =>
-                          filters.type.includes(option.value)
-                      )
-                    : [],
-            options: options || []
+        let result = {
+            ...document,
+            similarResources: similarResources.response.docs
         };
-    }, [facets, filters.type]);
 
-    const getTerms = useCallback(() => {
-        if (!facets) return;
+        if (document.links) {
+            result.links = await Promise.all(
+                document.links.map(async item => {
+                    let link = JSON.parse(item);
 
-        return Object.fromEntries(
-            Object.entries(facets)
-                .filter(
-                    ([key, value]) =>
-                        key.endsWith('terms') && value.buckets.length > 0
-                )
-                .map(([key, value]) => {
-                    let options = value.buckets.map((item, index) => ({
-                        id: index,
-                        value: item.val
-                    }));
-
-                    return [
-                        key,
-                        {
-                            label: termLabels[key],
-                            selected:
-                                key in filters.terms
-                                    ? options.filter(option =>
-                                          filters.terms[key].includes(
-                                              option.value
-                                          )
-                                      )
-                                    : [],
-                            options: options
-                        }
-                    ];
+                    try {
+                        const checkedLink = await fetchExternalData(
+                            'linky/check-url',
+                            {
+                                url: decodeURIComponent(link.url),
+                                check_ogc_capabilities: false
+                            }
+                        );
+                        return {
+                            ...checkedLink,
+                            name: link.name
+                        };
+                    } catch (error) {
+                        return {
+                            ...link,
+                            status_code: 500
+                        };
+                    }
                 })
-        );
-    }, [facets, filters.terms]);
+            );
+        }
 
-    const getRanges = useCallback(() => {
-        if (!facets) return;
+        return result;
+    };
 
-        let relevantFacets = Object.entries(facets)
-            .filter(
-                ([key, value]) =>
-                    key.endsWith('range') && value.buckets.length > 1
-            )
-            .map(([key, _]) => key);
+    const getTerms = useCallback(
+        keys => {
+            if (!facets) return;
 
-        return Object.fromEntries(
-            Object.entries(dateRanges)
-                .filter(([_, value]) =>
-                    value.attributes.reduce(
-                        (accumulator, currentValue) =>
-                            accumulator &&
-                            relevantFacets.includes(currentValue),
-                        true
-                    )
-                )
-                .map(([key, value]) => {
-                    return [
+            return facets.reduce((result, currentValue) => {
+                let key = currentValue[0];
+                let value = currentValue[1];
+
+                if (key.includes('terms') && (!keys || keys.includes(key))) {
+                    let options = Object.entries(value)
+                        .filter(
+                            ([option, _]) =>
+                                option !== '' &&
+                                ((key !== 'type_terms' &&
+                                    key !== 'language_terms') ||
+                                    (key === 'type_terms' &&
+                                        option.charAt(0) !==
+                                            option.charAt(0).toLowerCase()) ||
+                                    (key === 'language_terms' &&
+                                        option.length <= 3))
+                        )
+                        .map(([option, _], index) => ({
+                            id: index,
+                            value: option
+                        }));
+
+                    result.push({
                         key,
-                        {
-                            label: value.label,
-                            selected:
-                                key in filters.ranges
-                                    ? filters.ranges[key]
-                                    : { from: null, to: null },
-                            minimum: Math.min(
-                                ...value.attributes.map(item =>
-                                    new Date(
-                                        facets[item].buckets[0].val
-                                    ).getFullYear()
-                                )
-                            ),
-                            maximum: Math.min(
-                                ...value.attributes.map(item =>
-                                    new Date(
-                                        facets[item].buckets.at(-1).val
-                                    ).getFullYear()
-                                )
-                            )
-                        }
-                    ];
-                })
+                        label: filterDefinitions[key].label,
+                        description: filterDefinitions[key].description,
+                        selected:
+                            key in filters.terms
+                                ? options.filter(option =>
+                                      filters.terms[key].includes(option.value)
+                                  )
+                                : [],
+                        options: options.sort((a, b) => {
+                            if (a.value > b.value) {
+                                return 1;
+                            } else if (a.value < b.value) {
+                                return -1;
+                            } else {
+                                return 0;
+                            }
+                        })
+                    });
+                }
+
+                return result;
+            }, []);
+        },
+        [facets, filters.terms]
+    );
+
+    const getNestedTerms = useCallback(() => {
+        if (!facets || !facetHierarchies) return;
+
+        return nestedTerms.map(key => {
+            let options = Object.keys(
+                facets.filter(item => item[0] === key)[0][1]
+            ).map((value, index) => ({
+                id: index,
+                value: value
+            }));
+
+            let newItem = {
+                key,
+                label: filterDefinitions[key].label,
+                description: filterDefinitions[key].description,
+                selected:
+                    key in filters.terms
+                        ? options.filter(option =>
+                              filters.terms[key].includes(option.value)
+                          )
+                        : [],
+                options: options,
+                optionsHierarchy: facetHierarchies[key]
+            };
+
+            return newItem;
+        });
+    }, [facets, facetHierarchies, filters.terms]);
+
+    const getResourceTypes = useCallback(async () => {
+        let resourceTypes = await getTerms([resourceTypeFilterKey]);
+
+        return resourceTypes?.[0];
+    }, [getTerms]);
+
+    const getSuggestions = async query => {
+        const suggestions = await fetchData('solr/query', {
+            method: 'terms',
+            'terms.fl': 'subjects',
+            'terms.limit': 10,
+            'terms.sort': 'count',
+            'terms.regex': `.*${query}.*`,
+            omitHeader: true
+        }).then(async data => {
+            let result = [
+                data.terms.subjects
+                    .filter(item => isNaN(item))
+                    .map(item => ({
+                        id: item.toLowerCase(),
+                        value: item.toLowerCase(),
+                        type: 'subject'
+                    }))
+            ];
+
+            if (query.length > 2) {
+                let titlesAndAuthors = await fetchData('solr/query', {
+                    method: 'suggest',
+                    'suggest.q': query,
+                    'suggest.count': 3,
+                    omitHeader: true
+                });
+
+                result.push(
+                    titlesAndAuthors.suggest.authorsSuggester[query].suggestions
+                        .map((item, index) => {
+                            let authors = [];
+                            let author = JSON.parse(item.term);
+
+                            if (
+                                author.person
+                                    ?.toLowerCase()
+                                    .includes(query.toLowerCase())
+                            ) {
+                                authors.push({
+                                    id: 'author-' + index,
+                                    value: author.person,
+                                    type: 'author'
+                                });
+                            }
+
+                            if (
+                                author.organization
+                                    ?.toLowerCase()
+                                    .includes(query.toLowerCase())
+                            ) {
+                                authors.push({
+                                    id: 'author-' + index,
+                                    value: author.organization,
+                                    type: 'author'
+                                });
+                            }
+
+                            return authors;
+                        })
+                        .flat()
+                );
+                result.push(
+                    titlesAndAuthors.suggest.titleSuggester[
+                        query
+                    ].suggestions.map((item, index) => ({
+                        id: 'title-' + index,
+                        value: item.term,
+                        type: 'title'
+                    }))
+                );
+            }
+
+            return result.flat();
+        });
+
+        return suggestions;
+    };
+
+    const getKeywordDescription = async keyword => {
+        const response = await fetchExternalData(
+            `vocab/api/v1/concepts/${keyword.replaceAll(' ', '')}`
         );
-    }, [facets, filters.ranges]);
+
+        if (response.definitions?.length > 0) {
+            return response.definitions[0].text;
+        }
+    };
+
+    const getChoices = useCallback(
+        keys => {
+            if (!facets) return;
+
+            return facets.reduce((result, currentValue) => {
+                let key = currentValue[0];
+
+                if (key.includes('query') && (!keys || keys.includes(key))) {
+                    result.push({
+                        key,
+                        label: filterDefinitions[key].label,
+                        description: filterDefinitions[key].description,
+                        selected: filters.choices.includes(key)
+                    });
+                }
+
+                return result;
+            }, []);
+        },
+        [facets, filters.choices]
+    );
+
+    const getRanges = useCallback(
+        keys => {
+            if (!facets) return;
+
+            return facets.reduce((result, currentValue) => {
+                let key = currentValue[0];
+                let value = currentValue[1];
+
+                if (key.includes('range') && (!keys || keys.includes(key))) {
+                    result.push({
+                        key,
+                        label: filterDefinitions[key].label,
+                        description: filterDefinitions[key].description,
+                        selected:
+                            key in filters.ranges
+                                ? filters.ranges[key]
+                                : { from: null, to: null },
+                        minimum: parseInt(value[0]),
+                        maximum: parseInt(value[1]) + defaultRange.gap
+                    });
+                }
+
+                return result;
+            }, []);
+        },
+        [facets, filters.ranges]
+    );
 
     const getCountries = useCallback(async () => {
         const countries = await import('src/assets/countries.json');
@@ -442,9 +654,15 @@ const useGetData = () => {
         getRecentEntries,
         getNews,
         getValidation,
+        getAugmentations,
         getResources,
-        getTypes,
+        getResource,
         getTerms,
+        getNestedTerms,
+        getResourceTypes,
+        getSuggestions,
+        getKeywordDescription,
+        getChoices,
         getRanges,
         getCountries,
         getRegions

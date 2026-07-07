@@ -1,20 +1,12 @@
-import PropTypes from 'prop-types';
-import styled from '@emotion/styled';
 import FormControl from '@mui/material/FormControl';
-import { Autocomplete, TextField } from '@mui/material';
+import { Autocomplete } from '@mui/material';
+import styled from '@emotion/styled';
 
-const StyledMuiAutocomplete = styled(Autocomplete)`
-    .MuiFormControl-root {
-        border-radius: 100px;
-    }
+import ToolTip from './ToolTip';
+import TextField from './TextField';
 
-    .MuiChip-root {
-        left: 0.5em;
-    }
-
-    svg {
-        right: 0.5em;
-    }
+const StyledFormControl = styled(FormControl)`
+    z-index: 0;
 `;
 
 const SelectList = ({
@@ -37,49 +29,35 @@ const SelectList = ({
     };
 
     return (
-        <FormControl
+        <StyledFormControl
             variant="outlined"
             {...props}
         >
-            <StyledMuiAutocomplete
-                multiple={multiple}
-                value={values}
-                options={options}
-                getOptionLabel={option => option.value || ''}
-                freeSolo
-                renderValue={value => <div>{value.length + ' selected'}</div>}
-                renderInput={params => (
-                    <TextField
-                        {...params}
-                        label={label}
-                        helperText={helperText}
-                    />
-                )}
-                onChange={handleChange}
-                {...props}
-            />
-        </FormControl>
+            <ToolTip
+                title={helperText}
+                placement="top"
+            >
+                <Autocomplete
+                    multiple={multiple}
+                    value={values}
+                    options={options}
+                    getOptionLabel={option => option.value || ''}
+                    renderValue={value => (
+                        <div>{value.length + ' selected'}</div>
+                    )}
+                    renderInput={params => (
+                        <TextField
+                            params={params}
+                            label={label}
+                            helperText={helperText}
+                        />
+                    )}
+                    onChange={handleChange}
+                    {...props}
+                />
+            </ToolTip>
+        </StyledFormControl>
     );
-};
-
-const valueType = PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.number,
-    PropTypes.object
-]);
-
-SelectList.propTypes = {
-    label: PropTypes.node,
-    values: PropTypes.arrayOf(valueType),
-    onChange: PropTypes.func,
-    options: PropTypes.arrayOf(
-        PropTypes.shape({
-            value: valueType.isRequired,
-            disabled: PropTypes.bool
-        })
-    ),
-    multiple: PropTypes.bool,
-    helperText: PropTypes.string
 };
 
 export default SelectList;

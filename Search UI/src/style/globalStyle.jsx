@@ -7,7 +7,7 @@ const GlobalStyle = ({ standalone }) => {
         <Global
             styles={css`
                 body {
-                    ${standalone ? '' : 'background-color: #f8f7fa'};
+                    ${standalone ? '' : 'background-color: #ffffff'};
                     color: #333;
                     font-family:
                         ${standalone ? 'Archivo' : 'Inter'}, sans-serif;
@@ -117,7 +117,7 @@ const GlobalStyle = ({ standalone }) => {
                             border-bottom: none;
                         }
 
-                        &:not(:first-child) {
+                        &:not(:first-of-type) {
                             border-top: none;
                             border-top-left-radius: 0;
                             border-top-right-radius: 0;
