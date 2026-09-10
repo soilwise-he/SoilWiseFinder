@@ -6,3 +6,20 @@ kubectl exec -it po/soilwise-solr-54766655c5-v2j52 -n soilwise-prod /bin/bash
 
 kubectl cp soilwise-solr-54766655c5-v2j52:/app wur_projects/soilwise/soilwise-solr/app -n soilwise-prod
 kubectl cp wur_projects/soilwise/soilwise-solr/app/data/records/conf/schema.xml soilwise-solr-54766655c5-v2j52:/app/data/records/conf/schema.xml -n soilwise-prod
+
+
+Solr parameters:
+- mm:   It controls how many of the optional clauses in a query (in our case all terms in the search text) must match for a document to be considered a match.
+- ps:   It is used in the context of the DisMax or eDisMax query parsers to specify how far apart the terms in a phrase query can be in the document while still being considered a match. 
+        This allows for "sloppy" phrase matching, where terms do not need to be immediately adjacent but can be within a certain number of positions (or words) of each other
+        The ps parameter is often used in conjunction with the pf (Phrase Fields) parameter, which boosts the score of documents where all the terms in the query appear in close proximity in the specified fields. 
+        The ps parameter defines the allowed slop for these phrase queries
+- tie:  In Apache Solr, the tie parameter is used in the DisMax and eDisMax query parsers to control how the scores from lower-scoring fields contribute to the final score of a document. 
+        Specifically, it acts as a tiebreaker when a term from the user's query matches multiple fields in a document
+        How tie Works
+            When a query term matches multiple fields, each field generates its own score for that term.
+            By default, only the highest score from any single field is used for the document's final score.
+            The tie parameter allows you to specify a float value (typically much less than 1, e.g., 0.1) that determines how much the scores from the other (lower-scoring) fields contribute to the final score.
+            A tie value of 0.0 means only the highest-scoring field contributes to the final score (pure "disjunction max" behavior).
+            A higher tie value (e.g., 0.1 or 0.99) allows lower-scoring fields to have a greater influence on the final score, which can help differentiate documents that have matches in multiple fields
+ 

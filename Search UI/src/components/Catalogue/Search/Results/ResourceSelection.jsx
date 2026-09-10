@@ -8,20 +8,19 @@ import {
 } from '@mui/icons-material';
 
 import muiTheme from 'src/style/theme';
-import { Resource } from 'components/Catalogue/Resource';
-import { getDetailsPageUrl, paths } from 'src/services/settings';
+import { displayTypes, Resource } from 'components/Catalogue/Resource';
+import { getDetailsPageUrl } from 'src/services/settings';
 import ToolTip from 'components/UIElements/ToolTip';
 
 const StickyResourceContainer = styled.div`
-    flex: 1 0 50%;
+    flex: 1 0 45%;
     padding: 0px;
     position: -webkit-sticky;
     position: sticky;
     top: 0;
-    height: calc(100vh - 25px);
-    overflow: scroll;
+    height: 100vh;
+    overflow-y: scroll;
     -ms-overflow-style: none;
-    scrollbar-width: none;
     background-color: color-mix(
         in srgb,
         var(--mui-palette-secondary-main) 10%,
@@ -29,10 +28,6 @@ const StickyResourceContainer = styled.div`
     );
     border-radius: var(--mui-shape-borderRadius-0);
     padding: var(--mui-spacing-0);
-
-    &::-webkit-scrollbar {
-        display: none;
-    }
 
     > div {
         padding: 0px !important;
@@ -64,45 +59,67 @@ const ButtonContainer = styled.div`
     }
 `;
 
-const ResourceSelection = ({ selectedEntry, setSelectedEntry }) => {
+const ResourceSelection = ({
+    selectedEntry,
+    setSelectedEntry,
+    inlineSelection
+}) => {
     if (!selectedEntry) return;
 
-    const isMobile = useMediaQuery(() => muiTheme.breakpoints.down('sm'));
-    const handleShare = () => {
-        navigator.clipboard.writeText(
-            `${window.location.host}${paths.catalogueResource}/${encodeURIComponent(selectedEntry?.identifier)}`
-        );
-    };
+    const columnView = window
+        ? window.innerWidth * 0.5 < muiTheme.breakpoints.values.md
+        : false;
 
     const content = [
         <ButtonContainer key="buttons">
             <ToolTip title="Close resource details">
                 <Button onClick={() => setSelectedEntry(null)}>
-                    {isMobile ? <KeyboardArrowUp /> : <KeyboardArrowLeft />}
+                    {inlineSelection ? (
+                        <KeyboardArrowUp />
+                    ) : (
+                        <KeyboardArrowLeft />
+                    )}
                 </Button>
             </ToolTip>
-            <ToolTip title="Copy url of detail page">
-                <Button onClick={handleShare}>
-                    <Share />
-                </Button>
-            </ToolTip>
-            <ToolTip title="Open resource details in a new tab">
-                <Button
-                    href={getDetailsPageUrl(selectedEntry?.identifier, true)}
-                    target="_blank"
-                    onClick={() => setSelectedEntry(null)}
-                >
-                    <ArrowOutward />
-                </Button>
-            </ToolTip>
+            {selectedEntry.identifier && (
+                <ToolTip title="Copy url of detail page">
+                    <Button
+                        onClick={() => {
+                            navigator.clipboard.writeText(
+                                getDetailsPageUrl(selectedEntry.identifier)
+                            );
+                        }}
+                    >
+                        <Share />
+                    </Button>
+                </ToolTip>
+            )}
+            {selectedEntry.identifier && (
+                <ToolTip title="Open resource details in a new tab">
+                    <Button
+                        href={getDetailsPageUrl(selectedEntry.identifier, true)}
+                        target="_blank"
+                        onClick={() => setSelectedEntry(null)}
+                    >
+                        <ArrowOutward />
+                    </Button>
+                </ToolTip>
+            )}
         </ButtonContainer>,
         <Resource
             key="document"
             document={selectedEntry}
+            displayType={
+                columnView
+                    ? inlineSelection
+                        ? displayTypes.summarized
+                        : displayTypes.column
+                    : displayTypes.full
+            }
         />
     ];
 
-    if (isMobile) {
+    if (inlineSelection) {
         return <InlineResourceContainer>{content}</InlineResourceContainer>;
     } else {
         return <StickyResourceContainer>{content}</StickyResourceContainer>;

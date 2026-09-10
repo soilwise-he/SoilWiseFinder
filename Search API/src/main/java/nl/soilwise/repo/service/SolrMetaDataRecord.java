@@ -1,6 +1,8 @@
 package nl.soilwise.repo.service;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
 import java.util.Date;
 
@@ -33,21 +35,18 @@ public class SolrMetaDataRecord {
     private List<String> matchedSubjects;
 
     private String thumbnail;
+    private TikaContentElement tika_content;
 
     private String spatial;
     private Date temporalStart;
     private Date temporalEnd;
 
-    public record AuthorElement(String person, String organization) {
+    public TikaContentElement getTikaContent() {
+        return tika_content;
     }
 
-    public record ContactElement(String person, String organization) {
-    }
-
-    public record ProjectElement(String title, String acronym, String grantnr) {
-    }
-
-    public record LinkElement(String url, String name, String format) {
+    public void setTikaContent(TikaContentElement tika_content) {
+        this.tika_content = tika_content;
     }
 
     public String getTitle() {
@@ -237,10 +236,25 @@ public class SolrMetaDataRecord {
     public String getThumbnail() {
         return thumbnail;
     }
-    
+
     public void setThumbnail(String thumbnail) {
         this.thumbnail = thumbnail;
     }
+
+    public record AuthorElement(String person, String organization) {
+    }
+
+    public record ContactElement(String person, String organization) {
+    }
+
+    public record ProjectElement(String title, String acronym, String grantnr) {
+    }
+    
+    public record LinkElement(String url, String name, String format) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record TikaContentElement(String title, List<String> authors, String text){}
 
 }
 

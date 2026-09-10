@@ -1,3 +1,24 @@
+## [2.0.9](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/compare/2.0.8...2.0.9) (2026-09-07)
+
+
+### Bug Fixes
+
+* adding tika to text_all ([f89ed02](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/commit/f89ed02c85a67b173ed971fb6be1bc44e0573831))
+
+## [2.0.8](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/compare/2.0.7...2.0.8) (2026-09-07)
+
+
+### Bug Fixes
+
+* adding morelikethis handler ([9901841](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/commit/9901841454c11a42eb71f76c0c13517229c3fbbf))
+
+## [2.0.7](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/compare/2.0.6...2.0.7) (2026-08-31)
+
+
+### Bug Fixes
+
+* add tika related fields to schema.xml ([b4220cf](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/commit/b4220cf2b39bf36ccf241c586a31dbb5e16bf582))
+
 ## [2.0.6](https://git.wur.nl/soilwise/soilwisefinder/soilwise-solr/compare/2.0.5...2.0.6) (2026-07-07)
 
 

@@ -14,7 +14,7 @@ const nextConfig = {
             return [
                 {
                     source: '/search-api/:path*',
-                    destination: `${process.env.NEXT_PUBLIC_BASE_URL_SEARCH_API}/:path*`
+                    destination: `${process.env.NEXT_PUBLIC_BASE_URL}/:path*`
                 }
             ];
         }

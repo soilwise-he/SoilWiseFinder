@@ -9,6 +9,7 @@ import Statistics from 'components/Catalogue/Info/Statistics';
 import RecentEntries from 'components/Catalogue/Info/RecentEntries';
 import News from 'components/Catalogue/Info/News';
 import Contact from 'components/Catalogue/Info/Contact';
+import { store } from 'src/context/store';
 
 const MainContainer = styled.div`
     display: flex;
@@ -17,6 +18,10 @@ const MainContainer = styled.div`
 `;
 
 export default function Home() {
+    const { environment } = store();
+
+    if (!environment) return;
+
     return (
         <MainContainer>
             <Introduction />

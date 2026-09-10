@@ -49,6 +49,15 @@ export function getExtent(coordinates) {
     ];
 }
 
+export function isDate(string) {
+    return (
+        typeof string === 'string' &&
+        new RegExp(
+            '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z'
+        ).test(string)
+    );
+}
+
 export function getDate(dateString) {
     let dateObject = new Date(dateString);
     let year = dateObject.getFullYear();

@@ -10,6 +10,7 @@ import Filters from 'components/Catalogue/Search/Filters';
 import StartNew from 'components/Catalogue/Search/StartNew';
 import { store } from 'src/context/store';
 import SearchExplanation from 'components/Catalogue/Search/SearchExplanation';
+import SearchSettings from 'components/Catalogue/Search/SearchSettings';
 
 const SearchContainer = styled.div`
     display: flex;
@@ -40,11 +41,16 @@ function ParameterizedSearchBar() {
 }
 
 export default function Search() {
+    const { environment } = store();
+
+    if (!environment) return;
+
     return (
         <Suspense>
             <SearchContainer>
                 <ParameterizedSearchBar />
                 <StartNew />
+                <SearchSettings />
                 <SearchExplanation />
             </SearchContainer>
             <Filters />

@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class SolrQueryRequest {
-    private static final Set<String> ALLOWED_METHODS = Set.of("suggest", "terms");
+    private static final Set<String> ALLOWED_METHODS = Set.of("suggest", "terms", "mlt");
 
     private final Map<String, Object> parameters;
 

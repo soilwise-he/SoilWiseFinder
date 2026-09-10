@@ -106,8 +106,8 @@ const ResourceOptions = () => {
             return getDetailsPageUrl(item.identifier);
         } else if (field === 'abstract') {
             return (
-                item[field].substring(0, 100).replaceAll('"', "'") +
-                (item[field].length > 100 ? '...' : '')
+                item[field]?.substring(0, 100).replaceAll('"', "'") +
+                (item[field]?.length > 100 ? '...' : '')
             );
         } else {
             return item[field]?.replaceAll('"', "'");

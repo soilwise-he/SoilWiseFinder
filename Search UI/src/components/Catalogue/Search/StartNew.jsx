@@ -1,5 +1,5 @@
 import { IconButton, Tooltip } from '@mui/material';
-import { Clear } from '@mui/icons-material';
+import { Delete } from '@mui/icons-material';
 
 import { store } from 'src/context/store';
 
@@ -12,7 +12,7 @@ const StartNew = () => {
                 color="secondary"
                 onClick={reset}
             >
-                <Clear />
+                <Delete />
             </IconButton>
         </Tooltip>
     );

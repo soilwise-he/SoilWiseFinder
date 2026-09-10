@@ -6,6 +6,7 @@ import { Container } from '@mui/material';
 
 import useGetData from 'src/services/getData';
 import NewsItem from './NewsItem';
+import { store } from 'src/context/store';
 
 const MainContainer = styled(Container)`
     width: 100%;

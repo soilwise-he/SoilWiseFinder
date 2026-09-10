@@ -1,3 +1,59 @@
+## [2.0.28](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.27...2.0.28) (2026-09-09)
+
+
+### Bug Fixes
+
+* function for getting env ([be522e9](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/be522e93bc77ba8d4e8b492c184d11217a76e864))
+
+## [2.0.27](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.26...2.0.27) (2026-09-09)
+
+
+### Bug Fixes
+
+* config ([fb6a5ad](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/fb6a5adb6577558f68efcdab3c6dd0be303728ab))
+
+## [2.0.26](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.25...2.0.26) (2026-09-09)
+
+
+### Bug Fixes
+
+* logging env ([5db2378](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/5db23786d7e8fabb32e2327db22d8e710a035c76))
+
+## [2.0.25](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.24...2.0.25) (2026-09-09)
+
+
+### Bug Fixes
+
+* keyword selection update ([e2fe8d4](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/e2fe8d408721f7a129a4c0eccf509767c2e3c904))
+
+## [2.0.24](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.23...2.0.24) (2026-09-08)
+
+
+### Bug Fixes
+
+* different way in env ([0498596](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/04985961d2d5b2c36e7834c092bdbd3e3fe51835))
+
+## [2.0.23](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.22...2.0.23) (2026-09-08)
+
+
+### Bug Fixes
+
+* saving and loading settings ([1b06124](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/1b06124ab8752e2eb91ab9f22e9962cb29b67ef0))
+
+## [2.0.22](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.21...2.0.22) (2026-09-07)
+
+
+### Bug Fixes
+
+* save spatial filter ([ab5ca8e](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/ab5ca8ea128d55284a986ec21aa7263c480d96b0))
+
+## [2.0.21](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.20...2.0.21) (2026-07-08)
+
+
+### Bug Fixes
+
+* small updates ([50cf8b6](https://git.wur.nl/soilwise/soilwisefinder/search-ui/commit/50cf8b60e59002ff71e581e9f86ea3ddc39501c9))
+
 ## [2.0.20](https://git.wur.nl/soilwise/soilwisefinder/search-ui/compare/2.0.19...2.0.20) (2026-07-07)
 
 

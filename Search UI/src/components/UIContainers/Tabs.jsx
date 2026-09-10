@@ -35,7 +35,7 @@ const TitleContainer = styled.div`
         }
     }
 
-    ${muiTheme.breakpoints.down('sm')} {
+    ${muiTheme.breakpoints.down('md')} {
         justify-content: space-between;
 
         .MuiInputBase-root {
@@ -75,7 +75,13 @@ const Tabs = ({ emptyTabs, titles, content }) => {
                 variant="outlined"
                 className={selectedIndex === index + 1 && 'selected'}
             >
-                {title}
+                {title.map((item, index) =>
+                    typeof item === 'string' ? (
+                        <p key={'tab-title-' + index}>{item}</p>
+                    ) : (
+                        item
+                    )
+                )}
             </Button>
         ));
     };
@@ -86,7 +92,7 @@ const Tabs = ({ emptyTabs, titles, content }) => {
                 {emptyTabs.map((tab, index) => (
                     <div key={'empty-tab-' + index}>{tab}</div>
                 ))}
-                {useMediaQuery(muiTheme.breakpoints.down('sm'))
+                {useMediaQuery(muiTheme.breakpoints.down('md'))
                     ? getTitlesAsMenu()
                     : getTitlesAsButtons()}
             </TitleContainer>

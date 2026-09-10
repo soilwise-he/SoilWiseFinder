@@ -1,26 +1,31 @@
-import { Resource as ResourceComponent } from 'components/Catalogue/Resource';
+import {
+    displayTypes,
+    Resource as ResourceComponent
+} from 'components/Catalogue/Resource';
 import { fetchExternalData } from 'src/services/getData';
-import { getBaseUrlApi } from 'src/services/settings';
+import { getUrl } from 'src/services/settings';
 
 export default async function Resource({ params }) {
     let requestHeaders = new Headers();
     requestHeaders.append('Content-Type', 'application/json');
 
     let { id } = await params;
-    let document = await fetch(`${getBaseUrlApi()}/solr/search`, {
-        method: 'POST',
-        headers: requestHeaders,
-        credentials: 'omit',
-        redirect: 'follow',
-        body: JSON.stringify({
-            query: `identifier:${decodeURIComponent(id)}`,
-            params: {
-                mm: '2<75%',
-                qf: `identifier`,
-                defType: 'edismax'
-            }
-        })
-    })
+
+    let document = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/solr/search`,
+        {
+            method: 'POST',
+            headers: requestHeaders,
+            credentials: 'omit',
+            redirect: 'follow',
+            body: JSON.stringify({
+                query: `identifier:${decodeURIComponent(id)}`,
+                params: {
+                    defType: 'edismax'
+                }
+            })
+        }
+    )
         .then(response => {
             return response.json();
         })
@@ -31,7 +36,7 @@ export default async function Resource({ params }) {
             console.log(error);
         });
 
-    await fetch(`${getBaseUrlApi()}/solr/search`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/solr/search`, {
         method: 'POST',
         headers: requestHeaders,
         credentials: 'omit',
@@ -54,21 +59,26 @@ export default async function Resource({ params }) {
             console.log(error);
         });
 
-    await fetchExternalData(`util/augments/${document.identifier}`).then(
-        response => {
-            document.augments = Object.fromEntries(
-                response.map(item => [item.property, item])
-            );
-        }
-    );
+    await fetchExternalData(
+        getUrl(process.env, `util/augments/${document.identifier}`)
+    ).then(response => {
+        document.augments = Object.fromEntries(
+            response.map(item => [item.property, item])
+        );
+    });
 
     if (document.links) {
         document.links = await Promise.all(
             document.links.map(async item => {
                 let link = JSON.parse(item);
-                const data = await fetchExternalData('linky/check-url', {
+                let url = getUrl(process.env, 'linky/check-url');
+
+                const data = await fetchExternalData(url, {
                     url: decodeURIComponent(link.url),
                     check_ogc_capabilities: false
+                }).catch(error => {
+                    console.error(error);
+                    return { error: 'link can not be processed' };
                 });
 
                 return {
@@ -83,7 +93,10 @@ export default async function Resource({ params }) {
         let descriptions = await Promise.all(
             document.matched_subjects.map(keyword =>
                 fetchExternalData(
-                    `vocab/api/v1/concepts/${keyword.replaceAll(' ', '')}`
+                    getUrl(
+                        process.env,
+                        `vocab/api/v1/concepts/${keyword.replaceAll(' ', '')}`
+                    )
                 )
             )
         );
@@ -96,5 +109,5 @@ export default async function Resource({ params }) {
         );
     }
 
-    return ResourceComponent({ document });
+    return ResourceComponent({ document, displayType: displayTypes.full });
 }

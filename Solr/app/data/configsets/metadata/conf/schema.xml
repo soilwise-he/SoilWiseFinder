@@ -31,6 +31,9 @@
     <field name="subjects" type="string" indexed="true" stored="true" multiValued="true"/>
     <field name="matched_subjects" type="string" indexed="true" stored="true" multiValued="true"/>
     <field name="thumbnail" type="string" indexed="true" stored="true" multiValued="false"/>
+    <field name="tika_title" type="text_general" indexed="true" stored="true" multiValued="false"/>
+    <field name="tika_text" type="text_general" indexed="true" stored="true" multiValued="false"/>
+    <field name="tika_authors" type="text_general" indexed="true" stored="true" multiValued="true"/>
 
     <!-- Temporal Fields -->
     <field name="date_publication" type="pdate" indexed="true" stored="true" multiValued="false"/>
@@ -51,6 +54,9 @@
     <copyField source="title" dest="text_all"/>
     <copyField source="abstract" dest="text_all"/>
     <copyField source="view_authors" dest="text_all"/>
+    <copyField source="tika_title" dest="text_all"/>
+    <copyField source="tika_text" dest="text_all"/>
+    <copyField source="tika_authors" dest="text_all"/>
     
     <field name="authors_suggest" type="text_general" indexed="true" stored="true" multiValued="true"/>
     <copyField source="view_authors" dest="authors_suggest"/>
@@ -192,6 +198,5 @@
         <str name="paramkey">param value</str>
       </similarity>
     -->
-
 
 </schema>

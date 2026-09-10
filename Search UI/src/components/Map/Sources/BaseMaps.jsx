@@ -8,9 +8,9 @@ export function OpenStreetMap() {
     });
 }
 
-export function CartoCDN() {
+export function CartoCDN(environment) {
     return new olSource.XYZ({
-        url: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+        url: `https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png?key=${environment.NEXT_PUBLIC_MAP_KEY}`,
         attributions: '© OpenStreetMap contributors, © CARTO'
     });
 }

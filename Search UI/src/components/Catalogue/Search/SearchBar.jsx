@@ -11,11 +11,12 @@ import {
     useMediaQuery
 } from '@mui/material';
 import { default as MagnifierIcon } from '@mui/icons-material/Search';
-import { Clear } from '@mui/icons-material';
 
 import { store } from 'src/context/store';
 import useGetData from 'src/services/getData';
 import muiTheme from 'src/style/theme';
+import { Delete } from 'components/UIElements/StyledIcons';
+import ToolTip from 'components/UIElements/ToolTip';
 
 const SearchText = styled.div`
     width: calc(100% - 2px);
@@ -93,6 +94,7 @@ const SearchBar = ({ handleSubmit }) => {
     const { query, setQuery } = store();
     const { getSuggestions } = useGetData();
     const [isFetching, setIsFetching] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     useEffect(() => {
         setSearchText(query || '');
@@ -110,10 +112,16 @@ const SearchBar = ({ handleSubmit }) => {
         }
     }, [anchorElement]);
 
+    useEffect(() => {
+        if (!showSuggestions) {
+            setFilteredSuggestions([]);
+        }
+    }, [showSuggestions]);
+
     const handleChange = async event => {
         let value = event.target.value;
 
-        if (value === '' || value.slice(-1) === ' ') {
+        if (value === '' || !showSuggestions) {
             setFilteredSuggestions([]);
         } else if (!isFetching) {
             let words = value.split(' ');
@@ -172,34 +180,46 @@ const SearchBar = ({ handleSubmit }) => {
     };
 
     const handleKeyDown = event => {
-        if (event.code === 'ArrowDown') {
-            event.preventDefault();
-            let focusElement = event.target;
+        if (
+            event.code === 'KeyV' ||
+            event.code === 'Escape' ||
+            event.code === 'Space'
+        ) {
+            setShowSuggestions(false);
+        } else {
+            setShowSuggestions(true);
 
-            if (event.target.tagName === 'INPUT') {
-                focusElement =
-                    document.getElementsByClassName('filter-option')[0];
-            } else {
-                focusElement = focusElement.nextSibling;
-            }
+            if (event.code === 'ArrowDown') {
+                event.preventDefault();
+                let focusElement = event.target;
 
-            focusElement?.focus();
-        } else if (event.code === 'ArrowUp') {
-            event.preventDefault();
-            let focusElement = event.target.previousSibling;
+                if (event.target.tagName === 'INPUT') {
+                    focusElement =
+                        document.getElementsByClassName('filter-option')[0];
+                } else {
+                    focusElement = focusElement.nextSibling;
+                }
 
-            if (!focusElement) {
-                focusElement = document.getElementById('search-text');
-            }
+                focusElement?.focus();
+            } else if (event.code === 'ArrowUp') {
+                event.preventDefault();
+                let focusElement = event.target.previousSibling;
 
-            focusElement?.focus();
-        } else if (event.code === 'Enter') {
-            setFilteredSuggestions([]);
+                if (!focusElement) {
+                    focusElement = document.getElementById('search-text');
+                }
 
-            if (event.target.tagName === 'INPUT') {
-                handleSubmit(searchText);
-            } else {
-                event.target.click();
+                focusElement?.focus();
+            } else if (event.code === 'Tab') {
+                setFilteredSuggestions([]);
+            } else if (event.code === 'Enter') {
+                setFilteredSuggestions([]);
+
+                if (event.target.tagName === 'INPUT') {
+                    handleSubmit(searchText);
+                } else {
+                    event.target.click();
+                }
             }
         }
     };
@@ -213,10 +233,11 @@ const SearchBar = ({ handleSubmit }) => {
                 .concat(
                     option.value.indexOf(' ') > 0
                         ? ' "' + option.value + '"'
-                        : ' ' + option
+                        : ' ' + option.value
                 )
         );
         document.getElementById('search-text').focus();
+        setFilteredSuggestions([]);
     };
 
     return (
@@ -258,20 +279,25 @@ const SearchBar = ({ handleSubmit }) => {
                 ))}
             </FilterOptions>
             {searchText && searchText !== '' && (
-                <IconButton
-                    color="secondary"
-                    onClick={() => {
-                        setSearchText('');
-                        setQuery('');
-                    }}
-                >
-                    <Clear />
-                </IconButton>
+                <ToolTip title="Clear search text">
+                    <IconButton
+                        color="secondary"
+                        onClick={() => {
+                            setSearchText('');
+                            setQuery('');
+                        }}
+                    >
+                        <Delete />
+                    </IconButton>
+                </ToolTip>
             )}
             <SearchButton
                 color="primary"
                 variant="contained"
-                onClick={() => handleSubmit(searchText)}
+                onClick={() => {
+                    setFilteredSuggestions([]);
+                    handleSubmit(searchText);
+                }}
             >
                 {useMediaQuery(() => muiTheme.breakpoints.down('sm')) ? (
                     <MagnifierIcon />

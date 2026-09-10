@@ -1,7 +1,7 @@
 'use client';
 
 import styled from '@emotion/styled';
-import Clear from '@mui/icons-material/Clear';
+import Delete from '@mui/icons-material/Delete';
 import { IconButton } from '@mui/material';
 
 import { store } from 'src/context/store';
@@ -10,7 +10,7 @@ import Tabs from 'components/UIContainers/Tabs';
 import ThematicFilters from 'components/Catalogue/Search/Filters/ThematicFilters';
 import TemporalFilters from 'components/Catalogue/Search/Filters/TemporalFilters';
 import SpatialFilter from 'components/Catalogue/Search/Filters/SpatialFilter';
-import { thematicFilterKeys } from 'src/services/settings';
+import { nestedTerms, thematicFilterKeys } from 'src/services/settings';
 import { useEffect, useState } from 'react';
 import SelectedOptions from './SelectedOptions';
 import SelectList from 'components/UIElements/SelectList';
@@ -32,7 +32,7 @@ const ClearButton = styled(IconButton)`
 `;
 
 const Filters = () => {
-    const { filters, updateTermFilter, removeFilter } = store();
+    const { environment, filters, updateTermFilter, removeFilter } = store();
     const { getResourceTypes } = useGetData();
     const [resourceTypes, setResourceTypes] = useState(null);
 
@@ -47,7 +47,7 @@ const Filters = () => {
                 color="secondary"
                 component="span"
             >
-                <Clear
+                <Delete
                     fontSize="small"
                     color="primary"
                 />
@@ -56,7 +56,9 @@ const Filters = () => {
     };
 
     useEffect(() => {
-        getResourceTypes().then(data => setResourceTypes(data));
+        getResourceTypes().then(data => {
+            setResourceTypes(data);
+        });
     }, [getResourceTypes]);
 
     const handleTypeChange = values => {
@@ -68,9 +70,13 @@ const Filters = () => {
 
     const getThematicFiltersTitle = () => {
         let title = ['Thematic filters'];
-        let values = Object.values(filters.terms).filter(([key, _]) =>
-            thematicFilterKeys.includes(key)
-        );
+        let values = Object.entries(filters.terms)
+            .filter(
+                ([key, _]) =>
+                    thematicFilterKeys.includes(key) ||
+                    nestedTerms.includes(key)
+            )
+            .map(([_, value]) => value);
 
         if (values.length > 0) {
             title.push(

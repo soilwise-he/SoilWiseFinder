@@ -257,6 +257,13 @@ const SearchExplanation = () => {
                         alt="resource"
                         width="100%"
                     />
+                    <h3>Import and export search and filter settings</h3>
+                    <p>
+                        If you click on the gear icon you will get a window in
+                        which you can import and export search and filter
+                        settings. In this way you can directly return to the
+                        view that you have the settings for.
+                    </p>
                 </ModalContainer>
             </Modal>
         </>

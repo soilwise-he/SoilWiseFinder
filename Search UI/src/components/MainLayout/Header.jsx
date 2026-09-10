@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { Link, Paper } from '@mui/material';
 
-import { paths, showMenu } from 'src/services/settings';
+import { paths } from 'src/services/settings';
+import { store } from 'src/context/store';
 
 const MenuItems = styled.div`
     display: flex;
@@ -16,6 +18,15 @@ const MenuLink = styled.a`
 `;
 
 const Header = () => {
+    const { environment } = store();
+    const [showCatalogueHome, setShowCatalogueHome] = useState(null);
+
+    useEffect(() => {
+        if (!environment) return;
+
+        setShowCatalogueHome(environment.NEXT_PUBLIC_SHOW_MENU !== 'false');
+    }, [environment]);
+
     return (
         <Paper variant="header">
             <Link
@@ -25,17 +36,17 @@ const Header = () => {
             >
                 <img src="/images/soilwise-white-logo.png" />
             </Link>
-            {showMenu() && (
-                <MenuItems>
+            <MenuItems>
+                {showCatalogueHome && (
                     <MenuLink
                         href={paths.catalogueHome}
                         variant="image"
                     >
                         home
                     </MenuLink>
-                    <MenuLink href={paths.catalogueSearch}>search</MenuLink>
-                </MenuItems>
-            )}
+                )}
+                <MenuLink href={paths.catalogueSearch}>search</MenuLink>
+            </MenuItems>
         </Paper>
     );
 };

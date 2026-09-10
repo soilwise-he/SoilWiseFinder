@@ -1,14 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import {
-    getBaseUrlApi,
     typeOfSpatialFilters,
     solrFacets,
     defaultRange,
     resourceTypeFilterKey,
     filterDefinitions,
     nestedTerms,
-    getUrlOfExternalApi
+    getUrl
 } from './settings';
 import { store } from 'src/context/store';
 
@@ -20,12 +19,11 @@ class FetchError extends Error {
 }
 
 export function fetchData(endpoint, body) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
-        let url = `${getBaseUrlApi()}/${endpoint}`;
 
-        fetch(url, {
+        fetch(endpoint, {
             method: 'POST',
             headers,
             credentials: 'omit',
@@ -49,10 +47,9 @@ export function fetchData(endpoint, body) {
 }
 
 export function fetchExternalData(endpoint, body = null) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         let headers = new Headers();
         headers.append('Content-Type', 'application/json');
-        let url = `${getUrlOfExternalApi(endpoint)}`;
         let parameters = {
             method: body ? 'POST' : 'GET',
             headers,
@@ -62,25 +59,19 @@ export function fetchExternalData(endpoint, body = null) {
 
         if (body) parameters.body = JSON.stringify(body);
 
-        fetch(url, parameters)
+        let response = await fetch(endpoint, parameters)
             .then(response => {
                 return response.json();
             })
-            .then(response => {
-                if (response?.error) {
-                    reject(new FetchError(response.error));
-                } else if (response?.hasOwnProperty?.('_embedded')) {
-                    resolve(response._embedded);
-                } else {
-                    resolve(response);
-                }
-            })
             .catch(reject);
+
+        resolve(response);
     });
 }
 
 const useGetData = () => {
-    const { facets, facetHierarchies, pagination, filters } = store();
+    const { environment, facets, facetHierarchies, pagination, filters } =
+        store();
 
     const getStatistics = useCallback(() => {
         if (!facets || facets.length === 0) return;
@@ -166,15 +157,18 @@ const useGetData = () => {
                 0,
                 lastEntry.response.docs[0].date_harvest.indexOf('T')
             );
-            const solrResponse = await fetchData(`solr/search`, {
-                query: '*:*',
-                filter:
-                    'date_harvest:[' +
-                    harvestDate +
-                    'T00:00:00Z TO ' +
-                    harvestDate +
-                    'T23:59:59Z]'
-            });
+            const solrResponse = await fetchData(
+                getUrl(environment, `solr/search`),
+                {
+                    query: '*:*',
+                    filter:
+                        'date_harvest:[' +
+                        harvestDate +
+                        'T00:00:00Z TO ' +
+                        harvestDate +
+                        'T23:59:59Z]'
+                }
+            );
 
             return {
                 date: harvestDate,
@@ -186,34 +180,39 @@ const useGetData = () => {
     };
 
     const getRecentEntries = async () => {
-        const solrResponse = await fetchData(`solr/search`, {
-            query: '*:*',
-            sort: 'date_harvest desc, date desc',
-            params: {
-                rows: 3
+        const solrResponse = await fetchData(
+            getUrl(environment, `solr/search`),
+            {
+                query: '*:*',
+                sort: 'date_harvest desc, date desc',
+                params: {
+                    rows: 3
+                }
             }
-        });
+        );
 
         return solrResponse.response.docs;
     };
 
     const getNews = async () => {
         const data = await fetchExternalData(
-            `util/feeds/items?offset=0&limit=3`
+            getUrl(environment, `util/feeds/items?offset=0&limit=3`)
         );
 
         return data;
     };
 
     const getValidation = async value => {
-        const data = await fetchExternalData(`util/pid/status/${value}`);
+        const data = await fetchExternalData(
+            getUrl(environment, `util/pid/status/${value}`)
+        );
 
         return data;
     };
 
     const getAugmentations = async identifier => {
         const data = await fetchExternalData(
-            `util/augments/${identifier}`
+            getUrl(environment, `util/augments/${identifier}`)
         ).then(response => {
             return Object.fromEntries(
                 response.map(item => [item.property, item])
@@ -231,7 +230,7 @@ const useGetData = () => {
         solrFacets
     ) {
         try {
-            const result = await fetchData(`solr/search`, {
+            const result = await fetchData(getUrl(environment, `solr/search`), {
                 query: query,
                 filter: solrFilters,
                 sort: sort,
@@ -274,12 +273,11 @@ const useGetData = () => {
     const getResources = useCallback(
         async (query, filters, sort, all = false) => {
             let solrParameters = {
-                mm: '2<75%',
-                df: 'title',
+                df: 'text_all',
                 ps: 2.0,
-                tie: 0.1,
-                qf: `title^2 abstract^2 subjects^1 matched_subjects^2 authors_suggest^2`,
-                pf: `title^8 abstract^4 subjects^1 matched_subjects^2 authors_suggest^8`,
+                tie: 0.2,
+                qf: `title^2 abstract^2 subjects^1 matched_subjects^2 authors_suggest^2 tika_title^2 tika_text^2 tika_authors^2`,
+                pf: `title^8 abstract^4 subjects^1 matched_subjects^2 authors_suggest^8 tika_title^2 tika_text^8 tika_authors^2`,
                 defType: 'edismax',
                 rows: all
                     ? pagination.numberOfItems
@@ -345,10 +343,13 @@ const useGetData = () => {
     );
 
     const getResource = async document => {
-        let similarResources = await fetchData(`solr/search`, {
-            query: `q={!mlt fl=title,type,language,license,projects,sources,temporal_range,spatial mintf=1 maxdfpct=50}${document.identifier}`,
-            params: { spellcheck: false, rows: 3 }
-        });
+        let similarResources = await fetchData(
+            getUrl(environment, 'solr/search'),
+            {
+                query: `q={!mlt fl=title,abstract,matched_subjects qf=title^2.0,abstract^4.0,subjects^2.0 mintf=1 maxdfpct=50 minwl=3 maxwl=15 boost=true interestingTerms=list}${document.identifier}`,
+                params: { spellcheck: false, rows: 3 }
+            }
+        );
 
         let result = {
             ...document,
@@ -361,18 +362,28 @@ const useGetData = () => {
                     let link = JSON.parse(item);
 
                     try {
-                        const checkedLink = await fetchExternalData(
-                            'linky/check-url',
+                        let checkedLink = await fetchExternalData(
+                            getUrl(environment, 'linky/check-url'),
                             {
                                 url: decodeURIComponent(link.url),
                                 check_ogc_capabilities: false
                             }
-                        );
+                        ).catch(error => {
+                            console.log(error);
+                        });
+
+                        if (!checkedLink)
+                            checkedLink = {
+                                status_code: 500,
+                                url: link.url
+                            };
+
                         return {
                             ...checkedLink,
                             name: link.name
                         };
                     } catch (error) {
+                        console.log(error);
                         return {
                             ...link,
                             status_code: 500
@@ -475,7 +486,7 @@ const useGetData = () => {
     }, [getTerms]);
 
     const getSuggestions = async query => {
-        const suggestions = await fetchData('solr/query', {
+        const suggestions = await fetchData(getUrl(environment, 'solr/query'), {
             method: 'terms',
             'terms.fl': 'subjects',
             'terms.limit': 10,
@@ -494,12 +505,15 @@ const useGetData = () => {
             ];
 
             if (query.length > 2) {
-                let titlesAndAuthors = await fetchData('solr/query', {
-                    method: 'suggest',
-                    'suggest.q': query,
-                    'suggest.count': 3,
-                    omitHeader: true
-                });
+                let titlesAndAuthors = await fetchData(
+                    getUrl(environment, 'solr/query'),
+                    {
+                        method: 'suggest',
+                        'suggest.q': query,
+                        'suggest.count': 3,
+                        omitHeader: true
+                    }
+                );
 
                 result.push(
                     titlesAndAuthors.suggest.authorsSuggester[query].suggestions
@@ -554,7 +568,10 @@ const useGetData = () => {
 
     const getKeywordDescription = async keyword => {
         const response = await fetchExternalData(
-            `vocab/api/v1/concepts/${keyword.replaceAll(' ', '')}`
+            getUrl(
+                environment,
+                `vocab/api/v1/concepts/${keyword.replaceAll(' ', '')}`
+            )
         );
 
         if (response.definitions?.length > 0) {

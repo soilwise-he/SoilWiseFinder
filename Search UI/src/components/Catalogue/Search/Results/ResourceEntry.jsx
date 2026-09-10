@@ -3,32 +3,52 @@ import { Button } from '@mui/material';
 
 import MapWrapper from 'components/Map/MapWrapper';
 import SimpleMapContent from 'components/Map/MapContent/SimpleMapContent';
-import { mapParameters, tagDefinitions } from 'src/services/settings';
+import {
+    fieldDefinitions,
+    mapParameters,
+    tagDefinitions
+} from 'src/services/settings';
 import { useCallback } from 'react';
 import ToolTip from 'components/UIElements/ToolTip';
+import StatusIndicator from 'components/UIElements/StatusIndicator';
+import { getDate } from 'src/services/util';
 
 const Entry = styled.a`
     display: flex;
     gap: var(--mui-spacing-0);
     justify-content: space-between;
-    padding: 15px 0px;
-    border-bottom: 2px solid var(--mui-palette-grey-400);
+    padding: 15px 5px;
+    border-bottom: 1px solid var(--mui-palette-grey-400);
+    border-top: 1px solid var(--mui-palette-grey-400);
+    border-left: 1px solid transparent;
+    border-right: 1px solid transparent;
 
     &.selected {
+        box-shadow: 0px 0px 4px 2px
+            color-mix(
+                in srgb,
+                var(--mui-palette-secondary-main) 30%,
+                transparent
+            );
+    }
+
+    &:hover {
+        border-bottom: 1px solid var(--mui-palette-secondary-main);
+        border-top: 1px solid var(--mui-palette-secondary-main);
         background-color: color-mix(
             in srgb,
-            var(--mui-palette-secondary-main) 10%,
+            var(--mui-palette-secondary-main) 5%,
             transparent
         );
     }
 
-    &:hover {
-        background-color: var(--mui-palette-grey-100);
+    ${props => props.theme.breakpoints.down('md')} {
+        flex-direction: column;
     }
 `;
 
 const Summary = styled.div`
-    flex: 65% 1 1;
+    flex: 1 1 85%;
 
     h2 {
         font-size: 18px;
@@ -56,13 +76,14 @@ const Summary = styled.div`
 const Tags = styled.div`
     display: flex;
     flex-direction: row;
+    flex-wrap: wrap;
     gap: var(--mui-spacing-0);
     align-items: center;
 `;
 
 const Tag = styled(Button)`
     border: 1px solid var(--variant-outlinedBorder) !important;
-    background-color: var(--variant-outlinedBg) !important;
+    background-color: white !important;
     color: var(--variant-outlinedColor) !important;
 
     &.augmented {
@@ -72,18 +93,6 @@ const Tag = styled(Button)`
     }
 `;
 
-const Status = styled.div`
-    width: 20px;
-    height: 2.28rem;
-    border: 1px solid var(--mui-palette-custom-augmentationBorder);
-    border-radius: var(--mui-shape-borderRadius-0);
-    background: linear-gradient(
-        to top,
-        var(--mui-palette-custom-augmentationBorder) ${props => props.value}%,
-        white ${props => props.value}%
-    );
-`;
-
 const Abstract = styled.p`
     overflow: hidden;
     text-overflow: ellipsis;
@@ -91,7 +100,6 @@ const Abstract = styled.p`
     display: -webkit-box;
     -webkit-box-orient: vertical;
     white-space: normal;
-    max-height: 90px;
 `;
 
 const Authors = styled.p`
@@ -104,7 +112,7 @@ const EntryDate = styled.p`
 `;
 
 const ImageContainer = styled.div`
-    flex: 15% 1 1;
+    flex: 1 1 15%;
     min-width: 150px;
     min-height: 250px;
 
@@ -138,28 +146,30 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
         let authors = null;
 
         if (data.view_authors) {
-            let organizations = data.view_authors.reduce(
-                (result, currentAuthor) => {
-                    currentAuthor = JSON.parse(currentAuthor);
+            let organizations = data.view_authors
+                .filter(item => item !== '')
+                .reduce(
+                    (result, currentAuthor) => {
+                        currentAuthor = JSON.parse(currentAuthor);
 
-                    if (!currentAuthor.organization) {
-                        result[0].push(currentAuthor.person);
-                    } else {
-                        if (!(currentAuthor.organization in result[1])) {
-                            result[1][currentAuthor.organization] = [];
+                        if (!currentAuthor.organization) {
+                            result[0].push(currentAuthor.person);
+                        } else {
+                            if (!(currentAuthor.organization in result[1])) {
+                                result[1][currentAuthor.organization] = [];
+                            }
+
+                            if (currentAuthor.person) {
+                                result[1][currentAuthor.organization].push(
+                                    currentAuthor.person
+                                );
+                            }
                         }
 
-                        if (currentAuthor.person) {
-                            result[1][currentAuthor.organization].push(
-                                currentAuthor.person
-                            );
-                        }
-                    }
-
-                    return result;
-                },
-                [[], {}]
-            );
+                        return result;
+                    },
+                    [[], {}]
+                );
 
             authors = [];
 
@@ -186,7 +196,7 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
         );
     };
 
-    const getDate = () => {
+    const getAvailableSince = () => {
         let dateLabel = 'Available since ';
         let date = data.date;
 
@@ -195,7 +205,7 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
                 <EntryDate>
                     <i>
                         {dateLabel}
-                        {date.substring(0, date.indexOf('T'))}
+                        {getDate(date)}
                     </i>
                 </EntryDate>
             )
@@ -236,11 +246,20 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
         let value = parseFloat(data.augments.completeness.target).toFixed(0);
 
         return (
-            <ToolTip
-                title={`The metadata of this record is ${value}% complete.`}
-            >
-                <Status value={value} />
-            </ToolTip>
+            <div>
+                <StatusIndicator
+                    percentage={value}
+                    helperText={
+                        <div>
+                            <p>
+                                The metadata of this record is {value}%
+                                complete.
+                            </p>
+                            <p>{fieldDefinitions.completeness.description}</p>
+                        </div>
+                    }
+                />
+            </div>
         );
     }, [data.augments]);
 
@@ -300,7 +319,7 @@ const ResourceEntry = ({ data, setSelectedEntry, ...props }) => {
                     }}
                 />
                 {getAuthor(data)}
-                {getDate(data)}
+                {getAvailableSince(data)}
 
                 <Abstract
                     dangerouslySetInnerHTML={{

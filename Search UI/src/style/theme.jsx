@@ -7,10 +7,11 @@ const muiTheme = createTheme({
     breakpoints: {
         values: {
             xs: 0,
-            sm: 600,
+            sm: 576,
             md: 768,
-            lg: 1025,
-            xl: 1536
+            lg: 992,
+            xl: 1200,
+            xxl: 1400
         }
     },
     palette: {
@@ -99,7 +100,7 @@ const muiTheme = createTheme({
         },
         MuiContainer: {
             styleOverrides: {
-                root: {
+                root: ({ theme }) => ({
                     maxWidth: '1200px !important',
                     variants: [
                         {
@@ -111,7 +112,11 @@ const muiTheme = createTheme({
                                 padding: '0px 20px !important',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '20px'
+                                gap: '20px',
+                                [theme.breakpoints.down('md')]: {
+                                    margin: '25px auto',
+                                    padding: '0 10px !important'
+                                }
                             }
                         },
                         {
@@ -152,7 +157,7 @@ const muiTheme = createTheme({
                             }
                         }
                     ]
-                }
+                })
             }
         },
         MuiLink: {

@@ -9,14 +9,16 @@ import { useMap } from 'src/context/MapContext';
 import { getDataStyle } from 'src/style/mapStyle';
 import Controls from '../Controls/Controls';
 import ZoomControls from '../Controls/ZoomControls';
+import { store } from 'src/context/store';
 
 const SimpleMapContent = ({ data }) => {
+    const { environment } = store();
     const [backgroundLayerSource, setBackgroundLayerSource] = useState();
     const [dataLayerSource, setDataLayerSource] = useState();
     const { zoomToExtent } = useMap();
 
     useEffect(() => {
-        setBackgroundLayerSource(CartoCDN());
+        setBackgroundLayerSource(CartoCDN(environment));
         setDataLayerSource(vector([]));
     }, []);
 

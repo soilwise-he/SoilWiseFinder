@@ -12,6 +12,7 @@ import { getExtent } from 'src/services/util';
 import { typeOfSpatialFilters } from 'src/services/settings';
 import SearchMapContent from 'src/components/Map/MapContent/SearchMapContent';
 import { IsWithinIcon, OverlapsIcon } from 'assets/icons';
+import WKT from 'ol/format/WKT';
 
 const SpatialContainer = styled.div`
     display: flex;
@@ -43,30 +44,36 @@ const RadioLabel = styled.div`
 `;
 
 const SpatialFilter = () => {
-    const { setSpatialFilter, area, filters } = store();
+    const { setSpatialFilter, area, resetArea, filters } = store();
     const [countries, setCountries] = useState(null);
     const [regions, setRegions] = useState(null);
-    const [selected, setSelected] = useState({
-        country: [],
-        region: [],
-        feature: null,
-        typeOfFilter: typeOfSpatialFilters.overlap
-    });
+    const [selected, setSelected] = useState(null);
     const { getCountries, getRegions } = useGetData();
 
     useEffect(() => {
         getCountries().then(data => setCountries(data));
+        setSelected({
+            country: [],
+            region: [],
+            feature: null,
+            typeOfFilter:
+                filters.spatial?.typeOfFilter || typeOfSpatialFilters.overlap
+        });
     }, []);
 
     useEffect(() => {
+        if (!selected) return;
+
         if (selected.country.length === 0) {
             setRegions(null);
         } else {
             getRegions(selected.country[0].id).then(data => setRegions(data));
         }
-    }, [selected.country]);
+    }, [selected?.country]);
 
     useEffect(() => {
+        if (!selected) return;
+
         if (selected.feature?.geoJsonFeature) {
             setSpatialFilter(
                 getExtent(selected.feature.geoJsonFeature.geometry.coordinates),
@@ -77,8 +84,10 @@ const SpatialFilter = () => {
                 selected.feature.olFeature.getGeometry(),
                 selected.typeOfFilter
             );
+        } else {
+            setSpatialFilter(filters.spatial?.area, selected?.typeOfFilter);
         }
-    }, [selected.feature, selected.typeOfFilter]);
+    }, [selected?.feature, selected?.typeOfFilter]);
 
     useEffect(() => {
         let feature = null;
@@ -91,25 +100,16 @@ const SpatialFilter = () => {
             feature = { olFeature: area.boundingBox };
         }
 
-        setSelected(previous => ({
-            ...previous,
-            country: [],
-            region: [],
-            feature: feature
-        }));
+        if (feature)
+            setSelected(previous => ({
+                ...previous,
+                feature: feature
+            }));
     }, [area]);
-
-    useEffect(() => {
-        if (!filters.spatial) return;
-
-        setSelected(previous => ({
-            ...previous,
-            typeOfFilter: filters.spatial.typeOfFilter
-        }));
-    }, [filters.spatial]);
 
     const getChangeHandler = key => value => {
         if (key === 'country') {
+            resetArea();
             setSelected(previous => ({
                 ...previous,
                 country: value,
@@ -126,6 +126,7 @@ const SpatialFilter = () => {
                 }
             }));
         } else if (key === 'region') {
+            resetArea();
             setSelected(previous => ({
                 ...previous,
                 country: previous.country,
@@ -173,7 +174,7 @@ const SpatialFilter = () => {
                             typeOfSpatialFilters.overlap,
                             typeOfSpatialFilters.within
                         ]}
-                        value={selected.typeOfFilter}
+                        value={selected?.typeOfFilter}
                         handleChange={getChangeHandler('typeOfFilter')}
                     />
                     <SelectLists>
@@ -182,7 +183,7 @@ const SpatialFilter = () => {
                             label="Select country"
                             options={countries || []}
                             multiple={false}
-                            values={selected.country}
+                            values={selected?.country}
                             onChange={getChangeHandler('country')}
                             fontSize="18px"
                             fullWidth
@@ -192,7 +193,7 @@ const SpatialFilter = () => {
                             label="Select region"
                             options={regions || []}
                             multiple={false}
-                            values={selected.region}
+                            values={selected?.region}
                             onChange={getChangeHandler('region')}
                             fontSize="18px"
                             disabled={!regions?.length}
@@ -202,7 +203,7 @@ const SpatialFilter = () => {
                 </FilterOptions>
 
                 <MapWrapper>
-                    <SearchMapContent data={selected.feature} />
+                    <SearchMapContent data={selected?.feature} />
                 </MapWrapper>
             </SpatialContainer>
         )

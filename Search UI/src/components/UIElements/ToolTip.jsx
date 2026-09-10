@@ -1,24 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const Tooltip = dynamic(() => import('@mui/material/Tooltip'), { ssr: false });
 
 const ToolTip = ({ title, children, ...props }) => {
     const [open, setOpen] = useState(false);
-
-    useEffect(() => {
-        let timer;
-
-        if (open) {
-            timer = setTimeout(() => {
-                setOpen(false);
-            }, 2000);
-        }
-
-        return () => clearTimeout(timer);
-    }, [open]);
 
     return (
         <Tooltip

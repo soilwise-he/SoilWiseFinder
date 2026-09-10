@@ -9,15 +9,19 @@ import useGetData from 'src/services/getData';
 import { thematicFilterKeys } from 'src/services/settings';
 import SwitchControl from 'components/UIElements/SwitchControl';
 import NestedSelectList from 'components/UIElements/NestedSelectList';
+import muiTheme from 'src/style/theme';
 
 const FilterOptions = styled.div`
     display: flex;
     gap: var(--mui-spacing-1);
     justify-content: flex-start;
     flex-direction: row;
-    flex-wrap: wrap;
     padding: var(--mui-spacing-0);
     border: 1px solid var(--mui-palette-grey-200);
+
+    ${props => props.theme.breakpoints.down('md')} {
+        flex-direction: column;
+    }
 `;
 const OptionsContainer = styled.div`
     display: flex;
@@ -31,13 +35,17 @@ const OptionsContainer = styled.div`
 `;
 const ChoicesContainer = styled(OptionsContainer)`
     flex-direction: column;
-    flex: 0 1 calc(15% - var(--mui-spacing-0));
+    flex: 0 1 calc(25% - var(--mui-spacing-0));
     margin-top: auto;
     margin-bottom: auto;
 `;
 const TermsContainer = styled(OptionsContainer)`
     flex-direction: row;
     flex: 0 1 calc(85% - var(--mui-spacing-0));
+
+    ${props => props.theme.breakpoints.down('md')} {
+        flex-direction: column;
+    }
 `;
 
 const ThematicFilters = () => {
@@ -67,7 +75,7 @@ const ThematicFilters = () => {
     }, [getChoices, getTerms, getNestedTerms]);
 
     return (
-        <FilterOptions>
+        <FilterOptions theme={muiTheme}>
             {terms.length === 1 && choices.length === 0 ? (
                 <p>There are no thematic filters left to filter on</p>
             ) : (
@@ -89,7 +97,10 @@ const ThematicFilters = () => {
                                 />
                             ))}
                     </ChoicesContainer>,
-                    <TermsContainer key="terms">
+                    <TermsContainer
+                        key="terms"
+                        theme={muiTheme}
+                    >
                         {terms.map(item => (
                             <SelectList
                                 key={'search-' + item.key}
@@ -102,7 +113,7 @@ const ThematicFilters = () => {
                                 helperText={item.description}
                             />
                         ))}
-                        {nestedTerms.map(item => (
+                        {nestedTerms?.map(item => (
                             <NestedSelectList
                                 key={'search-' + item.key}
                                 label={item.label}

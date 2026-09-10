@@ -8,16 +8,17 @@ const StyledModal = styled(Box)`
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 80%;
-    height: 80vh;
+    max-width: 80%;
+    max-height: 80vh;
     background-color: white;
     border: 2px solid var(--mui-palette-secondary-main);
     box-shadow: 24;
-    padding: 20px;
+    padding: var(--mui-spacing-1);
     overflow: scroll;
 
     h1 {
         margin-bottom: 0px;
+        margin-top: 0px;
     }
 
     button {

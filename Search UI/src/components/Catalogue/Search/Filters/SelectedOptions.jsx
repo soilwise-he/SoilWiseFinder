@@ -1,5 +1,6 @@
 import styled from '@emotion/styled';
 import { Chip } from '@mui/material';
+import { Delete } from 'components/UIElements/StyledIcons';
 
 import { store } from 'src/context/store';
 import { filterDefinitions } from 'src/services/settings';
@@ -55,6 +56,7 @@ const SelectedOptions = () => {
                     }
                     key={key}
                     onDelete={() => updateChoiceFilter(key, false)}
+                    deleteIcon={<Delete size={0.8} />}
                 />
             ))}
             {Object.entries(filters.terms).map(([key, item]) =>
@@ -77,6 +79,7 @@ const SelectedOptions = () => {
                         ]}
                         key={key + '-' + value}
                         onDelete={() => removeTermFromFilter(key, value)}
+                        deleteIcon={<Delete size={0.8} />}
                     />
                 ))
             )}
@@ -99,6 +102,7 @@ const SelectedOptions = () => {
                     ]}
                     key={'range-' + key}
                     onDelete={() => removeRangeFilter(key)}
+                    deleteIcon={<Delete size={0.8} />}
                 />
             ))}
         </OptionsContainer>

@@ -1,3 +1,40 @@
+## [2.0.12](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.11...2.0.12) (2026-09-07)
+
+
+### Bug Fixes
+
+* update dockerfile ([afe8ed0](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/afe8ed08aeae46e404ad8e1cca815a9d5248cf67))
+
+## [2.0.11](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.10...2.0.11) (2026-09-07)
+
+
+### Bug Fixes
+
+* grobid and docling by default disabled ([f076c9a](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/f076c9a0f9fcb5eda3214733854c9422438be9f2))
+
+## [2.0.10](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.9...2.0.10) (2026-09-03)
+
+
+### Bug Fixes
+
+* Docling support ([c2fc2a2](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/c2fc2a224cbccd904d95eed4b68e02ed1113d70b))
+
+## [2.0.9](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.8...2.0.9) (2026-09-01)
+
+
+### Bug Fixes
+
+* deploy ([91cfa69](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/91cfa6954bfb34755f8e60fecff26bb2568a2419))
+
+## [2.0.8](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.7...2.0.8) (2026-08-31)
+
+
+### Bug Fixes
+
+* added european_funded and testPdf ([b586718](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/b586718078998d111d460d61db2307b00e859b11))
+* put content from column tika_content into SolrInputDocument ([d7d7b7f](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/d7d7b7f7eaaa01e26d05ac8e75b2ac140c8842ef))
+* put two versions known to be compatible with eachother.... ([12d1330](https://git.wur.nl/soilwise/soilwisefinder/search-api/commit/12d133058b816f1592a4af1d9d5bfafdf157d8a5))
+
 ## [2.0.7](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.6...2.0.7) (2026-07-06)
 
 ## [2.0.6](https://git.wur.nl/soilwise/soilwisefinder/search-api/compare/2.0.5...2.0.6) (2026-06-29)

@@ -7,18 +7,18 @@ import proj4 from 'proj4';
 import {
     dynamicFilterKeys,
     filterDefinitions,
-    getBaseUrlApi,
     mapParameters,
-    nestedTerms,
+    resourceTypeFilterKey,
     solrFacets,
     sortOptions,
     termHierarchies
 } from 'src/services/settings';
-import { fetchExternalData } from 'src/services/getData';
+import { getEnvironment } from 'src/app/config';
 
 let StoreContext = createContext();
 
 export function StoreProvider({ children }) {
+    const [environment, setEnvironment] = useState(null);
     const [selectedIndex, setSelectedIndex] = useState(null);
     const [facets, setFacets] = useState(null);
     const [facetHierarchies, setFacetHierarchies] = useState(null);
@@ -119,126 +119,39 @@ export function StoreProvider({ children }) {
         });
     };
 
-    const getBroaderKeywords = async (narrowerKeyword, keywordHierarchy) => {
-        keywordHierarchy = [narrowerKeyword, ...keywordHierarchy];
-
-        let response = await fetchExternalData(
-            `vocab/api/v1/concepts/${narrowerKeyword.replaceAll(' ', '')}`
-        );
-
-        if (response.broader?.length > 0) {
-            return await getBroaderKeywords(
-                response.broader[0].label,
-                keywordHierarchy
-            );
-        } else {
-            return keywordHierarchy;
-        }
-    };
-
-    const keywordHierachyListToDictionary = (items, dictionary) => {
-        let currentDictionary = dictionary;
-
-        items.forEach(item => {
-            if (!(item in currentDictionary)) {
-                currentDictionary[item] = {};
-            }
-
-            currentDictionary = currentDictionary[item];
-        });
-
-        return dictionary;
-    };
-
-    const getKeywordHierarchy = async keywords => {
-        let keywordHierarchyList = [];
-
-        for (let keyword of keywords) {
-            let data = await getBroaderKeywords(keyword, []);
-            keywordHierarchyList.push(data);
-        }
-
-        let currentHierarchy = {};
-
-        for (let keywordList of keywordHierarchyList) {
-            currentHierarchy = keywordHierachyListToDictionary(
-                keywordList,
-                currentHierarchy
-            );
-        }
-
-        return currentHierarchy;
-    };
-
-    const hasSiblings = option => {
-        return Object.keys(option).length > 0;
-    };
-
-    const flattenHierarchy = (items, parents, result) => {
-        Object.entries(items).forEach(([key, value]) => {
-            if (hasSiblings(value)) {
-                flattenHierarchy(value, [...parents, key], result);
-            } else {
-                if (key in result) {
-                    result[key] = [...result[key], ...parents];
-                } else {
-                    result[key] = parents;
-                }
-            }
-        });
-    };
-
-    const getFacetHierarchies = data => {
-        if (termHierarchies) {
-            setFacetHierarchies(termHierarchies);
-        } else {
-            Promise.all(
-                nestedTerms.map(async key => {
-                    let values = data[key].buckets.map(item => item.val);
-                    let optionsHierarchy = await getKeywordHierarchy(values);
-                    let flattenedHierarchy = {};
-
-                    flattenHierarchy(optionsHierarchy, [], flattenedHierarchy);
-
-                    return [
-                        key,
-                        {
-                            nested: optionsHierarchy,
-                            flattened: flattenHierarchy
-                        }
-                    ];
-                })
-            ).then(hierarchies => {
-                setFacetHierarchies(Object.fromEntries(hierarchies));
-            });
-        }
+    const getFacetHierarchies = () => {
+        setFacetHierarchies(termHierarchies);
     };
 
     useEffect(() => {
-        let headers = new Headers();
-        headers.append('Content-Type', 'application/json');
+        getEnvironment().then(data => {
+            setEnvironment(data);
 
-        fetch(`${getBaseUrlApi()}/solr/search`, {
-            method: 'POST',
-            headers,
-            credentials: 'omit',
-            redirect: 'follow',
-            body: JSON.stringify({ query: '*:*', facet: solrFacets })
-        })
-            .then(response => response.json())
-            .then(response => {
-                if (response?.error) {
-                    console.error(response.error);
-                } else {
-                    updateFacets(response.facets);
-                    getFacetHierarchies(response.facets);
-                    setPagination(previous => ({
-                        ...previous,
-                        numberOfItems: response.facets.count
-                    }));
-                }
+            let headers = new Headers();
+            headers.append('Content-Type', 'application/json');
+
+            fetch(data.NEXT_PUBLIC_BASE_URL + '/solr/search', {
+                method: 'POST',
+                headers,
+                credentials: 'omit',
+                redirect: 'follow',
+                body: JSON.stringify({ query: '*:*', facet: solrFacets })
             })
-            .catch(error => console.error(error));
+                .then(response => response.json())
+                .then(response => {
+                    if (response?.error) {
+                        console.error(response.error);
+                    } else {
+                        updateFacets(response.facets);
+                        getFacetHierarchies(response.facets);
+                        setPagination(previous => ({
+                            ...previous,
+                            numberOfItems: response.facets.count
+                        }));
+                    }
+                })
+                .catch(error => console.error(error));
+        });
     }, []);
 
     useEffect(() => {
@@ -343,45 +256,57 @@ export function StoreProvider({ children }) {
     const setSpatialFilter = (geometry, typeOfFilter) => {
         let transformedCoordinates = [];
 
-        if (Array.isArray(geometry)) {
-            let transformedGeometry = [
-                ...proj4(
-                    mapParameters.defaultProjection,
-                    mapParameters.dataProjection,
-                    [geometry[0], geometry[1]]
-                ),
-                ...proj4(
-                    mapParameters.defaultProjection,
-                    mapParameters.dataProjection,
-                    [geometry[2], geometry[3]]
-                )
-            ];
-            transformedCoordinates = [
-                `${transformedGeometry[0]} ${transformedGeometry[1]}`,
-                `${transformedGeometry[2]} ${transformedGeometry[1]}`,
-                `${transformedGeometry[2]} ${transformedGeometry[3]}`,
-                `${transformedGeometry[0]} ${transformedGeometry[3]}`,
-                `${transformedGeometry[0]} ${transformedGeometry[1]}`
-            ];
+        if (geometry === null || typeof geometry === 'undefined') {
+            removeFilter('spatial');
+        } else if (typeof geometry === 'string') {
+            setFilters(previous => ({
+                ...previous,
+                spatial: {
+                    area: geometry,
+                    typeOfFilter
+                }
+            }));
         } else {
-            transformedCoordinates = geometry
-                .getCoordinates()[0]
-                .map(coordinates =>
-                    proj4(
+            if (Array.isArray(geometry)) {
+                let transformedGeometry = [
+                    ...proj4(
                         mapParameters.defaultProjection,
                         mapParameters.dataProjection,
-                        coordinates
-                    ).join(' ')
-                );
-        }
-
-        setFilters(previous => ({
-            ...previous,
-            spatial: {
-                area: `POLYGON((${transformedCoordinates.join(',')}))`,
-                typeOfFilter
+                        [geometry[0], geometry[1]]
+                    ),
+                    ...proj4(
+                        mapParameters.defaultProjection,
+                        mapParameters.dataProjection,
+                        [geometry[2], geometry[3]]
+                    )
+                ];
+                transformedCoordinates = [
+                    `${transformedGeometry[0]} ${transformedGeometry[1]}`,
+                    `${transformedGeometry[2]} ${transformedGeometry[1]}`,
+                    `${transformedGeometry[2]} ${transformedGeometry[3]}`,
+                    `${transformedGeometry[0]} ${transformedGeometry[3]}`,
+                    `${transformedGeometry[0]} ${transformedGeometry[1]}`
+                ];
+            } else {
+                transformedCoordinates = geometry
+                    .getCoordinates()[0]
+                    .map(coordinates =>
+                        proj4(
+                            mapParameters.defaultProjection,
+                            mapParameters.dataProjection,
+                            coordinates
+                        ).join(' ')
+                    );
             }
-        }));
+
+            setFilters(previous => ({
+                ...previous,
+                spatial: {
+                    area: `POLYGON((${transformedCoordinates.join(',')}))`,
+                    typeOfFilter
+                }
+            }));
+        }
     };
 
     const setLocations = geometries => {
@@ -427,23 +352,38 @@ export function StoreProvider({ children }) {
 
             return {
                 ...previous,
-                [key]: key === 'spatial' ? null : key === 'choices' ? [] : {}
+                [key]:
+                    key === 'spatial'
+                        ? null
+                        : key === 'choices'
+                          ? []
+                          : key === 'terms'
+                            ? previous[key] &&
+                              previous[key][resourceTypeFilterKey]
+                                ? {
+                                      [resourceTypeFilterKey]:
+                                          previous[key][resourceTypeFilterKey]
+                                  }
+                                : {}
+                            : {}
             };
         });
     };
 
     const reset = () => {
-        removeFilter('keys');
-        removeFilter('choices');
-        removeFilter('terms');
-        removeFilter('ranges');
-        removeFilter('spatial');
+        setFilters({
+            terms: {},
+            choices: [],
+            ranges: {},
+            spatial: null
+        });
         setQuery('');
         setSelectedIndex(null);
     };
 
     const value = useMemo(() => {
         return {
+            environment,
             selectedIndex,
             setSelectedIndex,
             facets,
@@ -471,7 +411,16 @@ export function StoreProvider({ children }) {
             removeFilter,
             reset
         };
-    }, [selectedIndex, facets, pagination, query, filters, sort, area]);
+    }, [
+        environment,
+        selectedIndex,
+        facets,
+        pagination,
+        query,
+        filters,
+        sort,
+        area
+    ]);
 
     return (
         <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

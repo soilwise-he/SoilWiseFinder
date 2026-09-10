@@ -12,6 +12,8 @@ import nl.soilwise.repo.domain.SoilwiseSolrDomainResult;
 import nl.soilwise.repo.service.ServiceSearch;
 import nl.soilwise.repo.service.ServiceSolrIngestion;
 import org.apache.solr.client.solrj.util.ClientUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+
 import nl.soilwise.repo.dto.Response;
 import nl.soilwise.repo.service.ServiceRepo;
 import nl.soilwise.repo.service.ServiceSolr;
@@ -31,8 +33,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 @Controller
 @RequestMapping("/")
-@Slf4j
 public class ControllerRepo {
+    public final static Logger log = LoggerFactory.getLogger(ControllerRepo.class);
 
     private static final String API_TAG = "API";
     private static final String SOLR_TAG = "Solr";

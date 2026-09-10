@@ -4,10 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import lombok.extern.slf4j.Slf4j;
-
+import nl.soilwise.repo.pdf.DoclingRestClient;
 import org.apache.solr.common.SolrInputDocument;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -18,10 +19,12 @@ import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 import static nl.soilwise.repo.util.ProjectStatics.SDF_DATE_PLUS_TIME;
-@Slf4j
+
 
 @Repository
 public class SolrViewRepository {
+    public final static Logger log = LoggerFactory.getLogger(SolrViewRepository.class);
+
     private JdbcTemplate jdbcTemplate;
     private DecimalFormat pointFormat;
 
@@ -39,15 +42,15 @@ public class SolrViewRepository {
         if (objectList == null) return null;
 
         return objectList.stream().map(item -> {
-            try {
-                return item instanceof String ? (String) item : objectMapper.writeValueAsString(item);
-            } catch (JsonProcessingException ignored) {
-                return "";
-            }
-        })
-        .filter(s -> s != null && !s.isBlank())
-        .distinct()
-        .toList();
+                    try {
+                        return item instanceof String ? (String) item : objectMapper.writeValueAsString(item);
+                    } catch (JsonProcessingException ignored) {
+                        return "";
+                    }
+                })
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
     }
 
     private SolrInputDocument mapToSolrInputDocument(SolrMetaDataRecord solrMetaDataRecord, ObjectMapper objectMapper) {
@@ -58,6 +61,13 @@ public class SolrViewRepository {
         result.addField("title", solrMetaDataRecord.getTitle());
         result.addField("abstract", solrMetaDataRecord.getAbstract_());
         result.addField("type", solrMetaDataRecord.getType());
+
+        if(solrMetaDataRecord.getTikaContent() != null)
+        {
+            result.addField("tika_title", solrMetaDataRecord.getTikaContent().title());
+            result.addField("tika_text", solrMetaDataRecord.getTikaContent().text());
+            result.addField("tika_authors", solrMetaDataRecord.getTikaContent().authors());
+        }
 
         if (solrMetaDataRecord.getAuthors() != null) {
             result.addField("persons", solrMetaDataRecord.getAuthors().stream()
@@ -73,7 +83,7 @@ public class SolrViewRepository {
                     .toList());
             result.addField("view_authors", mapToSolrListField(solrMetaDataRecord.getAuthors(), objectMapper));
         }
-        
+
         if (solrMetaDataRecord.getContacts() != null) {
             result.addField("contact_persons", solrMetaDataRecord.getContacts().stream()
                     .filter(Objects::nonNull)
@@ -92,7 +102,7 @@ public class SolrViewRepository {
         if (solrMetaDataRecord.getLinks() != null) {
             result.addField("links", mapToSolrListField(solrMetaDataRecord.getLinks(), objectMapper));
         }
-        
+
         result.addField("soilmission", solrMetaDataRecord.getSoilMission());
         result.addField("european_funded", solrMetaDataRecord.getEuropeanFunded());
         result.addField("license", solrMetaDataRecord.getLicense());
@@ -110,11 +120,11 @@ public class SolrViewRepository {
         result.addField("matched_subjects", mapToSolrListField(solrMetaDataRecord.getMatchedSubjects(), objectMapper));
 
         result.addField("thumbnail", solrMetaDataRecord.getThumbnail());
-        
+
         result.addField("spatial", solrMetaDataRecord.getSpatial());
         result.addField("temporal_start", solrMetaDataRecord.getTemporalStart());
         result.addField("temporal_end", solrMetaDataRecord.getTemporalEnd());
-        
+
         if (solrMetaDataRecord.getTemporalStart() != null && solrMetaDataRecord.getTemporalEnd() != null) {
             if (solrMetaDataRecord.getTemporalStart().before(solrMetaDataRecord.getTemporalEnd()))
                 result.addField("temporal_range", "[" + SDF_DATE_PLUS_TIME.format(solrMetaDataRecord.getTemporalStart()) + " TO " + SDF_DATE_PLUS_TIME.format(solrMetaDataRecord.getTemporalEnd()) + "]");
@@ -125,27 +135,27 @@ public class SolrViewRepository {
 
     private static List<String> extractAcronymsFromProjects(List<SolrMetaDataRecord.ProjectElement> projects) {
         if (projects == null || projects.size() == 0) return null;
-        
+
         return projects.stream().map(item -> item.acronym())
-            .filter(s -> s != null && !s.isBlank())
-            .distinct()
-            .toList();
+                .filter(s -> s != null && !s.isBlank())
+                .distinct()
+                .toList();
     }
 
     public List<SolrInputDocument> getSolrInputDocuments(boolean mockup) {
-        List<SolrMetaDataRecord> allMetaDataRecords = fetchSolrMetaDataRecordsFromMockTable(mockup);
+        List<SolrMetaDataRecord> allMetaDataRecords = fetchSolrMetaDataRecordsOrFromMockTable(mockup);
         ObjectMapper objectMapper = new ObjectMapper();
         List<SolrInputDocument> list = allMetaDataRecords.stream().map(solrMetaDataRecord -> mapToSolrInputDocument(solrMetaDataRecord, objectMapper)).toList();
         return list;
     }
 
-    private @NonNull List<SolrMetaDataRecord> fetchSolrMetaDataRecordsFromMockTable(boolean mockup) {
-        String sql = (mockup) ? "select * from metadata.mockup_records" : "select * from metadata.mv_records";
-        
+    private @NonNull List<SolrMetaDataRecord> fetchSolrMetaDataRecordsOrFromMockTable(boolean mockup) {
+        String sql = (mockup) ? "select * from metadata.mockup_records" : "select * from metadata.mv_records left join metadata.pdf_items pi on mv_records.identifier = pi.identifier";
+
         if (mockup) {
             log.info("*** reindex using MOCKUP_RECORDS ***");
         }
-        
+
         ObjectMapper objectMapper = new ObjectMapper();
         RowMapper<SolrMetaDataRecord> mapper = (rs, rownum) -> {
             SolrMetaDataRecord solrMetaDataRecord = new SolrMetaDataRecord();
@@ -154,16 +164,27 @@ public class SolrViewRepository {
             solrMetaDataRecord.setAbstract_(rs.getString("abstract"));
             solrMetaDataRecord.setType(rs.getString("type"));
 
+            if("OK".equals(rs.getString("tika_status"))){
+                try {
+                    String tikaContent = rs.getString("tika_content");
+                    SolrMetaDataRecord.TikaContentElement tikaContentElement = objectMapper.readValue(tikaContent, SolrMetaDataRecord.TikaContentElement.class);
+                    solrMetaDataRecord.setTikaContent(tikaContentElement);
+                } catch (JsonProcessingException ignored) {
+                }
+            }
+
             String authorJson = rs.getString("authors");
             try {
-                List<SolrMetaDataRecord.AuthorElement> authors = authorJson == null ? null : objectMapper.readValue(authorJson, new TypeReference<List<SolrMetaDataRecord.AuthorElement>>() {});
+                List<SolrMetaDataRecord.AuthorElement> authors = authorJson == null ? null : objectMapper.readValue(authorJson, new TypeReference<List<SolrMetaDataRecord.AuthorElement>>() {
+                });
                 solrMetaDataRecord.setAuthors(authors);
             } catch (JsonProcessingException ignored) {
             }
-            
+
             String contactsJson = rs.getString("contacts");
             try {
-                List<SolrMetaDataRecord.ContactElement> contacts = contactsJson == null ? null : objectMapper.readValue(contactsJson, new TypeReference<List<SolrMetaDataRecord.ContactElement>>() {});
+                List<SolrMetaDataRecord.ContactElement> contacts = contactsJson == null ? null : objectMapper.readValue(contactsJson, new TypeReference<List<SolrMetaDataRecord.ContactElement>>() {
+                });
                 solrMetaDataRecord.setContacts(contacts);
             } catch (JsonProcessingException ignored) {
             }
@@ -179,9 +200,12 @@ public class SolrViewRepository {
             solrMetaDataRecord.setDate(rs.getDate("date"));
             solrMetaDataRecord.setHarvestDate(rs.getDate("harvestdate"));
 
+//            solrMetaDataRecord.setTikaContent(rs.getString("tika_content"));
+
             try {
                 String sourcesJson = rs.getString("sources");
-                List<String> sources = sourcesJson == null ? null : objectMapper.readValue(sourcesJson, new TypeReference<List<String>>() {});
+                List<String> sources = sourcesJson == null ? null : objectMapper.readValue(sourcesJson, new TypeReference<List<String>>() {
+                });
                 solrMetaDataRecord.setSources(sources);
             } catch (Exception exception) {
                 log.error(exception.getMessage());
@@ -189,7 +213,8 @@ public class SolrViewRepository {
 
             try {
                 String projectsJson = rs.getString("projects");
-                List<SolrMetaDataRecord.ProjectElement> projects = projectsJson == null ? null : objectMapper.readValue(projectsJson, new TypeReference<List<SolrMetaDataRecord.ProjectElement>>() {});
+                List<SolrMetaDataRecord.ProjectElement> projects = projectsJson == null ? null : objectMapper.readValue(projectsJson, new TypeReference<List<SolrMetaDataRecord.ProjectElement>>() {
+                });
                 solrMetaDataRecord.setProjects(projects);
             } catch (Exception exception) {
                 log.error(exception.getMessage());
@@ -197,7 +222,8 @@ public class SolrViewRepository {
 
             try {
                 String subjectsJson = rs.getString("subjects");
-                List<String> subjects = subjectsJson == null ? null : objectMapper.readValue(subjectsJson, new TypeReference<List<String>>() {});
+                List<String> subjects = subjectsJson == null ? null : objectMapper.readValue(subjectsJson, new TypeReference<List<String>>() {
+                });
                 solrMetaDataRecord.setSubjects(subjects);
             } catch (Exception exception) {
                 log.error(exception.getMessage());
@@ -205,26 +231,28 @@ public class SolrViewRepository {
 
             try {
                 String matchesSubjectsJson = rs.getString("matched_subjects");
-                List<String> matchedSubjects = matchesSubjectsJson == null ? null : objectMapper.readValue(matchesSubjectsJson, new TypeReference<List<String>>() {});
+                List<String> matchedSubjects = matchesSubjectsJson == null ? null : objectMapper.readValue(matchesSubjectsJson, new TypeReference<List<String>>() {
+                });
                 solrMetaDataRecord.setMatchedSubjects(matchedSubjects);
             } catch (Exception exception) {
                 log.error(exception.getMessage());
             }
-                
+
             try {
                 String linksJson = rs.getString("distributions");
-                List<SolrMetaDataRecord.LinkElement> links = linksJson == null ? null : objectMapper.readValue(linksJson, new TypeReference<List<SolrMetaDataRecord.LinkElement>>() {});
+                List<SolrMetaDataRecord.LinkElement> links = linksJson == null ? null : objectMapper.readValue(linksJson, new TypeReference<List<SolrMetaDataRecord.LinkElement>>() {
+                });
                 solrMetaDataRecord.setLinks(links);
             } catch (Exception exception) {
                 log.error(exception.getMessage());
             }
-            
+
             solrMetaDataRecord.setThumbnail(rs.getString("thumbnail"));
-            
+
             String spatial = rs.getString("spatial");
-            
+
             if (spatial != null && !spatial.isBlank()) {
-               solrMetaDataRecord.setSpatial(bboxStringToSolrPolygon(spatial));
+                solrMetaDataRecord.setSpatial(bboxStringToSolrPolygon(spatial));
             }
 
             solrMetaDataRecord.setTemporalStart(rs.getDate("temporal_start"));
@@ -259,9 +287,9 @@ public class SolrViewRepository {
             String maxY = pointFormat.format(dMaxY);
 
             String polygon = "POLYGON((minX minY, maxX minY, maxX maxY, minX maxY, minX minY))";
-            return polygon.replace("minX",minX).replace("maxX",maxX).replace("minY",minY).replace("maxY",maxY);
+            return polygon.replace("minX", minX).replace("maxX", maxX).replace("minY", minY).replace("maxY", maxY);
         } catch (Exception e) {
-            log.info("could not parse bbox: "+bbox);
+            log.info("could not parse bbox: " + bbox);
             return null;
         }
     }

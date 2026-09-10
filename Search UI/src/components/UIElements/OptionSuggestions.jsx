@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { Button, IconButton, Popper, TextField } from '@mui/material';
-import { Clear } from '@mui/icons-material';
+import { Delete } from './StyledIcons';
 
 const MainContainer = styled.div``;
 
@@ -149,7 +149,7 @@ const OptionSuggestions = ({ label, options, onSelect, onClear }) => {
                     value={text}
                 />
                 <IconButton onClick={handleClear}>
-                    <Clear />
+                    <Delete />
                 </IconButton>
             </TextContainer>
             <FilterOptions

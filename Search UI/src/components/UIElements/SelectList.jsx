@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 
 import ToolTip from './ToolTip';
 import TextField from './TextField';
+import { Delete } from './StyledIcons';
 
 const StyledFormControl = styled(FormControl)`
     z-index: 0;
@@ -52,6 +53,7 @@ const SelectList = ({
                             helperText={helperText}
                         />
                     )}
+                    clearIcon={<Delete size={0.8} />}
                     onChange={handleChange}
                     {...props}
                 />

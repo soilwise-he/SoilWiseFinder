@@ -3,18 +3,18 @@ package nl.soilwise.repo;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import lombok.extern.slf4j.Slf4j;
 import nl.soilwise.repo.service.SolrViewRepository;
 import org.apache.solr.common.SolrInputDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class SolrViewRepositoryIntegrationTest {
-
+    public final static Logger log = LoggerFactory.getLogger(SolrViewRepositoryIntegrationTest.class);
 
     enum MappingToSolrAcceptanceCriteria {
 

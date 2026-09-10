@@ -37,3 +37,4 @@ mvnw
 mvnw.cmd
 
 sparql.txt
+src/main/resources/logback-spring.xml

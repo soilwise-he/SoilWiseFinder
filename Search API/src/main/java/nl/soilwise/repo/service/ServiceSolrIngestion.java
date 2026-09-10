@@ -1,7 +1,7 @@
 package nl.soilwise.repo.service;
 
 
-import lombok.extern.slf4j.Slf4j;
+import nl.soilwise.repo.pdf.PdfLoaderService;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -11,6 +11,8 @@ import org.apache.solr.client.solrj.response.CoreAdminResponse;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -19,10 +21,9 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 
-@Slf4j
 @Service
 public class ServiceSolrIngestion {
-
+    public final static Logger log = LoggerFactory.getLogger(ServiceSolrIngestion.class);
     private final SolrViewRepository solrViewRepository;
 
     private @Value("${repo.solr.collection_v2_active}") String collection_active;

@@ -3,6 +3,7 @@ import Chip from '@mui/material/Chip';
 import { Autocomplete } from '@mui/material';
 
 import TextField from './TextField';
+import { Delete } from './StyledIcons';
 
 const SelectChip = ({
     label,
@@ -21,10 +22,6 @@ const SelectChip = ({
         }
 
         onChange(newValues);
-    };
-
-    const handleDelete = optionToDelete => {
-        onChange(values.filter(value => value !== optionToDelete));
     };
 
     return (
@@ -51,7 +48,7 @@ const SelectChip = ({
                                       label={option.value}
                                       key={key + '-' + option.value}
                                       {...itemProps}
-                                      onDelete={() => handleDelete(option)}
+                                      onDelete={null}
                                   />
                               );
                           })
@@ -65,6 +62,7 @@ const SelectChip = ({
                     />
                 )}
                 onChange={handleChange}
+                clearIcon={<Delete size={0.8} />}
                 {...props}
             />
         </FormControl>

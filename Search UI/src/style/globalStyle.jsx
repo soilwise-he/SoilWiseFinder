@@ -3,6 +3,8 @@
 import { css, Global } from '@emotion/react';
 
 const GlobalStyle = ({ standalone }) => {
+    let mediumScreenMaxWidth = '768px';
+
     return (
         <Global
             styles={css`
@@ -28,6 +30,12 @@ const GlobalStyle = ({ standalone }) => {
                     margin-bottom: 1.5em;
                     text-align: left;
                     color: #557237;
+
+                    @media (max-width: ${mediumScreenMaxWidth}) {
+                        font-size: 20px;
+                        line-height: 28px;
+                        margin-bottom: 1rem;
+                    }
                 }
 
                 h2 {

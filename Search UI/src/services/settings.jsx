@@ -4,33 +4,19 @@ export const paths = {
     catalogueResource: '/resource'
 };
 
-export const showMenu = () => {
-    return process.env.NEXT_PUBLIC_SHOW_MENU === 'true';
-};
-
-export const getBaseUrlApi = () => {
-    return process.env.NEXT_PUBLIC_BASE_URL_SEARCH_API || '/search-api';
-};
-
 export const getDetailsPageUrl = (identifier, relative = false) => {
-    return `${relative ? '' : window.location.host}${paths.catalogueResource}/${encodeURIComponent(identifier)}`;
+    return identifier
+        ? `${relative ? '' : window.location.host}${paths.catalogueResource}/${encodeURIComponent(identifier)}`
+        : '';
 };
 
-export const getUrlOfExternalApi = endpoint => {
+export const getUrl = (environment, endpoint) => {
     if (endpoint.startsWith('util') || endpoint.startsWith('linky')) {
-        return (
-            (process.env.NEXT_PUBLIC_UTIL_URL ||
-                'https://api.soilwise.wetransform.eu') +
-            '/' +
-            endpoint
-        );
+        return environment.NEXT_PUBLIC_UTIL_URL + '/' + endpoint;
+    } else if (endpoint.startsWith('vocab')) {
+        return environment.NEXT_PUBLIC_SOIL_VOCAB_URL + '/' + endpoint;
     } else {
-        return (
-            (process.env.NEXT_PUBLIC_SOIL_VOCAB_URL ||
-                'https://api.soilwise-he.containers.wur.nl/') +
-            '/' +
-            endpoint
-        );
+        return environment.NEXT_PUBLIC_BASE_URL + '/' + endpoint;
     }
 };
 
@@ -67,7 +53,7 @@ export const fieldDefinitions = {
         description: 'Type of license that applies to the resource.'
     },
     date_publication: {
-        label: 'Pulished on: ',
+        label: 'Published on: ',
         description: 'Date the resource is published.'
     },
     view_authors: {
@@ -127,7 +113,8 @@ export const fieldDefinitions = {
     },
     completeness: {
         label: 'Completeness',
-        description: 'Assessment of how populated the metadata is.'
+        description:
+            "The completeness of a metadata record is an assessment of how populated the metadata is. It's a percentage of the number of metadata fields that has an original or augmented value."
     },
     spatial: {
         label: 'Spatial',
@@ -174,7 +161,8 @@ export const filterDefinitions = {
     },
     matched_subjects_terms: {
         label: 'Keywords',
-        description: 'The selected keywords apply to the resource.'
+        description:
+            'In this panel you can select keywords that apply to a resource. The keywords are structured based on the Soil Vocabulary. You can click through the tree and follow the Soil Vocabulary hierarchy. Or you can search for a keyword at the top.'
     },
     date_range: {
         label: 'Available since',
@@ -1048,4 +1036,102 @@ export const termHierarchies = {
             'soil nitrogen loss': []
         }
     }
+};
+
+const KeywordHierarchy = () => {
+    const getBroaderKeywords = async (narrowerKeyword, keywordHierarchy) => {
+        keywordHierarchy = [narrowerKeyword, ...keywordHierarchy];
+
+        let response = await fetchExternalData(
+            `vocab/api/v1/concepts/${narrowerKeyword.replaceAll(' ', '')}`
+        ).catch(error => {
+            console.error(error);
+            return null;
+        });
+
+        if (response?.broader?.length > 0) {
+            return await getBroaderKeywords(
+                response.broader[0].label,
+                keywordHierarchy
+            );
+        } else {
+            return keywordHierarchy;
+        }
+    };
+
+    const keywordHierachyListToDictionary = (items, dictionary) => {
+        let currentDictionary = dictionary;
+
+        items.forEach(item => {
+            if (!(item in currentDictionary)) {
+                currentDictionary[item] = {};
+            }
+
+            currentDictionary = currentDictionary[item];
+        });
+
+        return dictionary;
+    };
+
+    const getKeywordHierarchy = async keywords => {
+        let keywordHierarchyList = [];
+
+        for (let keyword of keywords) {
+            let data = await getBroaderKeywords(keyword, []);
+            keywordHierarchyList.push(data);
+        }
+
+        let currentHierarchy = {};
+
+        for (let keywordList of keywordHierarchyList) {
+            currentHierarchy = keywordHierachyListToDictionary(
+                keywordList,
+                currentHierarchy
+            );
+        }
+
+        return currentHierarchy;
+    };
+
+    const hasSiblings = option => {
+        return Object.keys(option).length > 0;
+    };
+
+    const flattenHierarchy = (items, parents, result) => {
+        Object.entries(items).forEach(([key, value]) => {
+            if (hasSiblings(value)) {
+                flattenHierarchy(value, [...parents, key], result);
+            } else {
+                if (key in result) {
+                    result[key] = [...result[key], ...parents];
+                } else {
+                    result[key] = parents;
+                }
+            }
+        });
+    };
+
+    const getFacetHierarchies = data => {
+        return Promise.all(
+            nestedTerms.map(async key => {
+                let values = data[key].buckets.map(item => item.val);
+                let optionsHierarchy = await getKeywordHierarchy(values);
+                let flattenedHierarchy = {};
+
+                flattenHierarchy(optionsHierarchy, [], flattenedHierarchy);
+
+                return [
+                    key,
+                    {
+                        nested: optionsHierarchy,
+                        flattened: flattenedHierarchy
+                    }
+                ];
+            })
+        )
+            .then(hierarchies => {
+                return Object.fromEntries(hierarchies);
+            })
+            .catch(error => console.error(error));
+    };
 };

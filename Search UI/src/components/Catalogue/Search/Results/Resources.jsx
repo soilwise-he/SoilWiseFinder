@@ -30,16 +30,23 @@ const MainContainer = styled.div`
 const ResourcesContainer = styled.div`
     display: flex;
     flex-direction: column;
+    flex-basis: 100%;
 `;
 
 const Resources = () => {
     const [entries, setEntries] = useState(null);
     const { getResources, getResource, getKeywordDescription } = useGetData();
-    const { updateFacets, setPagination, query, filters, sort } = store();
+    const { environment, updateFacets, setPagination, query, filters, sort } =
+        store();
     const [selectedEntry, setSelectedEntry] = useState(null);
-    const isMobile = useMediaQuery(() => muiTheme.breakpoints.down('sm'));
+    const inlineSelection = useMediaQuery(() =>
+        muiTheme.breakpoints.down('md')
+    );
 
     useEffect(() => {
+        if (!environment) return;
+
+        setSelectedEntry(null);
         getResources(query, filters, sort).then(data => {
             updateFacets(data.facets);
             setPagination(previous => ({
@@ -48,7 +55,7 @@ const Resources = () => {
             }));
             setEntries(data.response.docs);
         });
-    }, [getResources, query, filters, sort]);
+    }, [environment, getResources, query, filters, sort]);
 
     useEffect(() => {
         if (!selectedEntry) return;
@@ -106,12 +113,13 @@ const Resources = () => {
                                     : ''
                             }
                         />,
-                        isMobile &&
+                        inlineSelection &&
                             selectedEntry?.identifier === item.identifier && (
                                 <ResourceSelection
                                     key={'selected-' + item.identifier}
                                     selectedEntry={selectedEntry}
                                     setSelectedEntry={setSelectedEntry}
+                                    inlineSelection={inlineSelection}
                                 />
                             )
                     ])}
@@ -120,10 +128,11 @@ const Resources = () => {
             ) : (
                 <div>No results could be found</div>
             )}
-            {!isMobile && (
+            {!inlineSelection && (
                 <ResourceSelection
                     selectedEntry={selectedEntry}
                     setSelectedEntry={setSelectedEntry}
+                    inlineSelection={inlineSelection}
                 />
             )}
         </MainContainer>

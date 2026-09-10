@@ -18,6 +18,12 @@ const Header = styled.div`
     );
     border-radius: var(--mui-shape-borderRadius-0);
     padding: 0px 20px;
+
+    ${muiTheme.breakpoints.down('md')} {
+        p {
+            font-size: 0.9rem !important;
+        }
+    }
 `;
 const Block = styled.div`
     display: flex;

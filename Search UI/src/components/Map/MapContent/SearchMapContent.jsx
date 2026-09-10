@@ -31,12 +31,12 @@ const SearchMapContent = ({ data }) => {
     const [locationLayerFeature, setLocationLayerFeature] = useState();
     const [dataLayerSource, setDataLayerSource] = useState();
     const [filterLayerSource, setFilterLayerSource] = useState();
-    const { filters } = store();
+    const { environment, filters } = store();
     const { zoomToExtent, interaction, setInteraction } = useMap();
     const { locationFeatures } = useGeoLocation();
 
     useEffect(() => {
-        setBackgroundLayerSource(CartoCDN());
+        setBackgroundLayerSource(CartoCDN(environment));
         setDataLayerSource(vector([]));
     }, []);
 

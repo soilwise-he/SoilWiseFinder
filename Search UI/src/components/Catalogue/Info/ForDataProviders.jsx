@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import styled from '@emotion/styled';
 import PropTypes from 'prop-types';
 import { Circle, Info } from '@mui/icons-material';
@@ -8,6 +8,7 @@ import { Button, Container, IconButton, TextField } from '@mui/material';
 
 import useGetData from 'src/services/getData';
 import Modal from 'components/UIContainers/Modal';
+import { store } from 'src/context/store';
 
 const Content = styled.div`
     display: flex;
